@@ -65,8 +65,6 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//禁止优化mian函数，否则串口发送会有问题
-__attribute__((optimize("O0")))
 /* USER CODE END 0 */
 
 /**

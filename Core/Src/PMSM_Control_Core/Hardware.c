@@ -6,7 +6,7 @@
 #include "adc.h"
 #include "stm32g4xx_hal_adc.h"
 
-float VCC_3V3=3.314f; //稳压模块输出电压
+float VCC_3V3=3.314f; //核心板VCC电压实测
 uint16_t IA_REF=4095*680/(680+2200)*2; //Ia偏置电压ADC值(12位ADC),根据电阻网络计算得到
 uint16_t IB_REF=4095*680/(680+2200)*2; //Ib偏置电压ADC值(12位ADC),根据电阻网络计算得到
 const float IA_K=0.33*2200/(680+2200)*2;//增益，由电阻网络计算得到(取正值)，单位V/A
