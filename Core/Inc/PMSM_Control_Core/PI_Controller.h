@@ -4,6 +4,7 @@
 
 #ifndef FOC_SENSORLESS_PI_CONTROLLER_H
 #define FOC_SENSORLESS_PI_CONTROLLER_H
+#include <stdbool.h>
 
 typedef struct PI_Controller_t {
     float Set;//设定值
@@ -15,24 +16,27 @@ typedef struct PI_Controller_t {
 
 //使用宏定义生成代码:
 //(NAME函数名称,P_VAL比例参数,I_Ts_VAL积分参数(I*Ts类型),MAX_VAL输出最大值,MIN_VAL输出最小值)
-#define GenerateFunction_PIController(NAME,P_VAL,I_Ts_VAL,MAX_VAL,MIN_VAL) \
-   static inline void NAME##_PI_update(struct PI_Controller_t* NAME){\
-        float error=NAME->Set-NAME->Measure;\
-        float output_unsat = P_VAL * error + I_Ts_VAL * NAME->AddUp;\
-        float output;                       \
-        if (output_unsat > MAX_VAL) {       \
-            output = MAX_VAL;               \
-        } else if (output_unsat < MIN_VAL) {\
-            output = MIN_VAL;               \
-        } else {                            \
-        output = output_unsat;              \
-        }                                   \
-        if (output == output_unsat) {       \
-            NAME->AddUp += error;           \
-        }                                   \
-        NAME->Output=output;                \
-   }\
-  extern struct PI_Controller_t NAME##_PIstate;
+#define GenerateFunction_PIController(NAME, P_VAL, I_Ts_VAL, MAX_VAL, MIN_VAL) \
+    static inline void NAME##_PI_update(struct PI_Controller_t* NAME){ \
+        float error = NAME->Set - NAME->Measure; \
+        float output_unsat = P_VAL * error + I_Ts_VAL * NAME->AddUp; \
+        float output; \
+        bool saturated = false; \
+        if (output_unsat > MAX_VAL) { \
+            output = MAX_VAL; \
+            saturated = true; \
+        } else if (output_unsat < MIN_VAL) { \
+            output = MIN_VAL; \
+            saturated = true; \
+        } else { \
+            output = output_unsat; \
+        } \
+        if (!saturated) { \
+            NAME->AddUp += error; \
+        } \
+        NAME->Output = output; \
+    } \
+    extern struct PI_Controller_t NAME##_PIstate;
 
 GenerateFunction_PIController(Id,10.f,0.01f,6.5f,-6.5f)
 GenerateFunction_PIController(Iq,10.f,0.01f,6.5f,-6.5f)
