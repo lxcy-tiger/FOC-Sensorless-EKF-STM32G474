@@ -2,7 +2,7 @@
 
 无感FOC项目，采用EKF作为观测器，MCU采用G474，板子使用ST的X-NUCLEO-IHM07M1评估板，项目为Clion的CMAKE项目，可以使用Clion或VSCode打开。
 
-注：工程已升级为CUBEMX6.16.0工程，最新版CUBEMX默认生成的代码不含有工具链的说明，直接运行会失败，每次生成代码后，需要在CMakeLists.txt较前部分添加一行：
+注：工程已升级为CUBEMX6.16.0工程，最新版CUBEMX每次默认生成的代码不含有工具链的说明，直接运行会失败，每次生成代码后，需要在CMakeLists.txt较前部分添加一行：
 
 ```cmake
 # Include toolchain file
