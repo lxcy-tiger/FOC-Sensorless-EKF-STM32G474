@@ -6,7 +6,7 @@
 #define FOC_SENSORLESS_USB_JUSTFLOAT_H
 #include "stdint.h"
 
-#define singleDataLength 7 //单次记录需要的数据长度(以float为单位)
+#define singleDataLength 8 //单次记录需要的数据长度(以float为单位)
 #define USB_HalfDataCount 1000//填充数据的一半数量
 #define USB_HalfDataLength (singleDataLength*USB_HalfDataCount)//填充数据的一半长度
 #define USB_MaxDataRecordLength (USB_HalfDataLength*2)//当数据每被填满一半，就发送一次数据
