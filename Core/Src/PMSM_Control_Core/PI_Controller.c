@@ -8,4 +8,4 @@ struct PI_Controller_t Speed_PIstate;
 
 
 
-struct PI_Controller_t SMO_Speed_PIstate;
+struct PI_Controller_t FluxObserver_Speed_PIstate;

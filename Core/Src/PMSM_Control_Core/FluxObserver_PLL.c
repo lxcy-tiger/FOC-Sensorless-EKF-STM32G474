@@ -10,21 +10,19 @@ static float flux_s[2]={0.00386335f,0.f};//定子磁通预测值(V·s)
 static float flux_r[2]={0.00386335f,0.f};//转子磁通预测值(V·s)
 static const float flux_e=0.0050628f;//转子磁通幅值(定值)
 static const float lambda=1000000.f;//增益
-static float Ethata=0.f;//电角度预测值(rad)
+static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
 static const float k=1.f;//切向增益
 
 struct FluxObserver_PLL_t fluxObserver_pll_est;
-
-
 
 static void FluxObserver_update(struct FluxObserver_PLL_t*fluxObserver_pll_est) {
     const float ualpha=fluxObserver_pll_est->Valpha_I;
     const float ubeta=fluxObserver_pll_est->Vbeta_I;
     const float ialpha=fluxObserver_pll_est->Ialpha_I;
     const float ibeta=fluxObserver_pll_est->Ibeta_I;
-    flux_r[0]=flux_r[0]-Ls*fluxObserver_pll_est->Ialpha_I;
-    flux_r[1]=flux_r[1]-Ls*fluxObserver_pll_est->Ibeta_I;
+    flux_r[0]=flux_r[0]-Ls*ialpha;
+    flux_r[1]=flux_r[1]-Ls*ibeta;
 
     flux_s[0]=T_s*(
         ualpha-Rs*ialpha+
@@ -45,16 +43,16 @@ static void FluxObserver_update(struct FluxObserver_PLL_t*fluxObserver_pll_est) 
 static void PLL_update(struct FluxObserver_PLL_t*fluxObserver_pll_est) {
     float c_theta,s_theta;
     static const float RAD_TO_DEG = 180.0f / PI;
-    arm_sin_cos_f32(Ethata * RAD_TO_DEG, &s_theta, &c_theta);
+    arm_sin_cos_f32(Etheta * RAD_TO_DEG, &s_theta, &c_theta);
     const float err=fluxObserver_pll_est->Flux_beta_O*c_theta-fluxObserver_pll_est->Flux_alpha_O*s_theta;
-    SMO_Speed_PIstate.error=-err;
-    SMO_Speed_PI_update(&SMO_Speed_PIstate);
-    Espeed=SMO_Speed_PIstate.Output;
-    Ethata+=Espeed*T_s;
-    while (Ethata >= PI2) Ethata -= PI2;
-    while (Ethata < 0.f) Ethata += PI2;
+    FluxObserver_Speed_PIstate.error=-err;
+    FluxObserver_Speed_PI_update(&FluxObserver_Speed_PIstate);
+    Espeed=FluxObserver_Speed_PIstate.Output;
+    Etheta+=Espeed*T_s;
+    while (Etheta >= PI2) Etheta -= PI2;
+    while (Etheta < 0.f) Etheta += PI2;
     fluxObserver_pll_est->Espeed_O=Espeed;
-    fluxObserver_pll_est->Etheta_O=Ethata;
+    fluxObserver_pll_est->Etheta_O=Etheta;
 }
 
 void FluxObserver_PLL_update(struct FluxObserver_PLL_t*fluxObserver_pll_est) {
