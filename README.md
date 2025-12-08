@@ -16,7 +16,7 @@ include("cmake/gcc-arm-none-eabi.cmake")
 |  核心板   |                                                                                         STM32G474RET6核心板                                                                                         |
 |  驱动板   |                                                                                         X-NUCLEO-IHM07M1                                                                                         |
  |  采样电阻  |                                                                                         330mOhm,双电阻采样方案                                                                                          |
-| 永磁同步电机 |                                                                       参数为额定电压12V,最大电流1A,Rs=2.75Ohm,Ls=1mH,flux=0.00386335                                                                        |
+| 永磁同步电机 |                                                                     参数为额定电压12V,最大电流1A,Rs=2.75Ohm,Ls=1mH,flux=0.00386335(V·s)                                                                     |
 | SVPWM  | 使用HRTIM(STM32G474特有的高精度计时器)产生PWM<br>计时器频率:0.68Ghz(Master Timer) 1.36Ghz(Timer A,B,C)<br>period值:34000(合Master Timer 0.68Ghz/34000=20khz)<br>PWM模式:中心对称(中间为高电平,两侧为低电平)<br>ADC触发时机:Master Timer更新时 |
 |  电流环   |                                                                                         PI控制(有抗饱和),20khz                                                                                         |
  |  转速环   |                                                                                 PI控制(有抗饱和),20khz(似乎有些过高,但是无所谓了)                                                                                  |
