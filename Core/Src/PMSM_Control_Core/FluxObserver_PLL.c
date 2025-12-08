@@ -1,6 +1,10 @@
 //
 // Created by lxcy on 2025/12/7.
 //
+/* 磁链观测器与PLL，参考自论文
+ * 《Performance Improvement of Nonlinear Flux Observer for Sensorless Control of PMSM》
+ *                                  Jiali Liu and Yongchang Zhang , Senior Member, IEEE
+ */
 #include "PMSM_Control_Core/FluxObserver_PLL.h"
 
 static const float T_s=5e-5;//采样时间(SMO执行周期)(s)
