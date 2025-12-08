@@ -6,10 +6,10 @@
 static const float T_s=5e-5;//采样时间(SMO执行周期)(s)
 static const float Rs=5.5f/2;//电阻(Ohm)
 static const float Ls=2.e-3f/2;;//电感(H)
-static float flux_s[2]={0.00386335f,0.f};//定子磁通预测值(V·s)
-static float flux_r[2]={0.00386335f,0.f};//转子磁通预测值(V·s)
+static float flux_s[2]={0.0050628f,0.f};//定子磁通预测值(V·s)
+static float flux_r[2]={0.f,0.f};//转子磁通预测值(V·s)
 static const float flux_e=0.0050628f;//转子磁通幅值(定值)
-static const float lambda=1000000.f;//增益
+static const float lambda=600.f;//增益
 static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
 static const float k=1.f;//切向增益
@@ -45,7 +45,7 @@ static void PLL_update(struct FluxObserver_PLL_t*fluxObserver_pll_est) {
     static const float RAD_TO_DEG = 180.0f / PI;
     arm_sin_cos_f32(Etheta * RAD_TO_DEG, &s_theta, &c_theta);
     const float err=fluxObserver_pll_est->Flux_beta_O*c_theta-fluxObserver_pll_est->Flux_alpha_O*s_theta;
-    FluxObserver_Speed_PIstate.error=-err;
+    FluxObserver_Speed_PIstate.error=err;
     FluxObserver_Speed_PI_update(&FluxObserver_Speed_PIstate);
     Espeed=FluxObserver_Speed_PIstate.Output;
     Etheta+=Espeed*T_s;
