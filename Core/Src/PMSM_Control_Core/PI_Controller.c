@@ -5,3 +5,7 @@
 struct PI_Controller_t Id_PIstate;
 struct PI_Controller_t Iq_PIstate;
 struct PI_Controller_t Speed_PIstate;
+
+
+
+struct PI_Controller_t SMO_Speed_PIstate;

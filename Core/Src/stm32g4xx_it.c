@@ -28,6 +28,7 @@
 #include "PMSM_Control_Core/Hardware.h"
 #include "PMSM_Control_Core/PI_Controller.h"
 #include "PMSM_Control_Core/SVPWM.h"
+#include "PMSM_Control_Core/FluxObserver_PLL.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -257,75 +258,42 @@ void ADC1_2_IRQHandler(void)
   ClarkePark.clarke.Ic_I=Ic;
   Clarke_transform(&ClarkePark.clarke);
 
-  /*
-   * 执行一次EKF,获取转子角度和速度
-   * 注意这里输入电压取上一次中断时计算的电压(事实上应当为上上次中断时计算的电压)
-   * 因为这次计算的电压，将会在下个周期作用
-   */
-  ekf_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
-  ekf_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-  ekf_est.Valpha_I=ClarkePark.ipark.Valpha_O;
-  ekf_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
-  EKF_update(&ekf_est);
+  const int Observer=0;//0表示使用EKF,1表示使用FluxObserver-PLL
+  float Espeed=0;
+  float Etheta=0;
+  if (Observer==0) {
+    /*
+    * 执行一次EKF,获取转子角度和速度
+    * 注意这里输入电压取上一次中断时计算的电压(事实上应当为上上次中断时计算的电压)
+    * 因为这次计算的电压，将会在下个周期作用
+    */
+    ekf_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
+    ekf_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
+    ekf_est.Valpha_I=ClarkePark.ipark.Valpha_O;
+    ekf_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
+    EKF_update(&ekf_est);
+    Espeed=ekf_est.Espeed_O;
+    Etheta=ekf_est.Etheta_O;
+  }
+  else {
+    /*
+    * 执行一次FluxObserver-PLL,获取转子角度和速度
+    * 注意这里输入电压取上一次中断时计算的电压(事实上应当为上上次中断时计算的电压)
+    * 因为这次计算的电压，将会在下个周期作用
+    */
+    fluxObserver_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
+    fluxObserver_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
+    fluxObserver_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
+    fluxObserver_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
+    FluxObserver_PLL_update(&fluxObserver_pll_est);
+    Espeed=fluxObserver_pll_est.Espeed_O;
+    Etheta=fluxObserver_pll_est.Etheta_O;
+  }
 
-//#define ALL_OPENCIRCLE
-#ifdef ALL_OPENCIRCLE
-/*
- * 全部开环测试
- */
-  static float Etheta=0;
-  //500rpm*7*2*PI/60/20KHZ
-
-  static const float Etheta_Add=500*7*PI2/60/20000;
-  Etheta+=Etheta_Add;
-  if(Etheta>PI2)Etheta-=PI2;
-
-  ClarkePark.ipark.Vd_I=0;
-  ClarkePark.ipark.Vq_I=2.1f;
-  ClarkePark.ipark.Theta_I=Etheta;
-  IPark_transform(&ClarkePark.ipark);
-  SVPWM_Calculate_Set(ClarkePark.ipark.Valpha_O,ClarkePark.ipark.Vbeta_O);
-  recordRunningData();
-  return;
-#endif
-//#define THETA_OPENCIRCLE
-#ifdef THETA_OPENCIRCLE
-  /*
-   * 角度开环测试
-   */
-  static float Etheta=0;
-  //500rpm*7*2*PI/60/20KHZ
-
-  static const float Etheta_Add=500*7*PI2/60/20000;
-  Etheta+=Etheta_Add;
-  if(Etheta>PI2)Etheta-=PI2;
-
-  Speed_PIstate.Measure=ekf_est.Espeed_O;
-  Speed_PI_update(&Speed_PIstate);
-
-  ClarkePark.park.Ialpha_I=ClarkePark.clarke.Ialpha_O;
-  ClarkePark.park.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-  ClarkePark.park.Theta_I=Etheta;
-  Park_transform(&ClarkePark.park);
-
-  Id_PIstate.Measure=ClarkePark.park.Id_O;
-  Id_PI_update(&Id_PIstate);
-  Iq_PIstate.Set=Speed_PIstate.Output;
-  Iq_PIstate.Measure=ClarkePark.park.Iq_O;
-  Iq_PI_update(&Iq_PIstate);
-
-  ClarkePark.ipark.Vd_I=Id_PIstate.Output;
-  ClarkePark.ipark.Vq_I=Iq_PIstate.Output;
-  ClarkePark.ipark.Theta_I=Etheta;
-
-  IPark_transform(&ClarkePark.ipark);
-  SVPWM_Calculate_Set(ClarkePark.ipark.Valpha_O,ClarkePark.ipark.Vbeta_O);
-  return;
-#endif
   /*
    * 执行一次转速环，获取Q电流环给定
    */
-  Speed_PIstate.Measure=ekf_est.Espeed_O;
+  Speed_PIstate.Measure=Espeed;
   Speed_PI_update(&Speed_PIstate);
 
   /*
@@ -333,7 +301,7 @@ void ADC1_2_IRQHandler(void)
    */
   ClarkePark.park.Ialpha_I=ClarkePark.clarke.Ialpha_O;
   ClarkePark.park.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-  ClarkePark.park.Theta_I=ekf_est.Etheta_O;
+  ClarkePark.park.Theta_I=Etheta;
   Park_transform(&ClarkePark.park);
 
   /*
@@ -343,10 +311,6 @@ void ADC1_2_IRQHandler(void)
   Id_PI_update(&Id_PIstate);
   Iq_PIstate.Set=Speed_PIstate.Output;
   Iq_PIstate.Measure=ClarkePark.park.Iq_O;
-//#define SpeedOpenCircle
-#ifdef SpeedOpenCircle
-  Iq_PIstate.Set=0.2f;
-#endif
   Iq_PI_update(&Iq_PIstate);
 
   /*
@@ -354,16 +318,7 @@ void ADC1_2_IRQHandler(void)
    */
   ClarkePark.ipark.Vd_I=Id_PIstate.Output;
   ClarkePark.ipark.Vq_I=Iq_PIstate.Output;
-  //#define CurrentOpenCircle
-  #ifdef CurrentOpenCircle
-  static float minous=0.f;
-  if (minous>-.5f)minous-=3e-6f;
-  ClarkePark.ipark.Vd_I=0;
-  static float Addupppppp=2.1f;
-  if (Addupppppp<6.f)Addupppppp+=1e-5f;
-  ClarkePark.ipark.Vq_I=Addupppppp;
-  #endif
-  ClarkePark.ipark.Theta_I=ekf_est.Etheta_O;
+  ClarkePark.ipark.Theta_I=Etheta;
   IPark_transform(&ClarkePark.ipark);
 
   /*

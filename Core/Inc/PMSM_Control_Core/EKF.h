@@ -5,7 +5,7 @@
 #ifndef FOC_SENSORLESS_EKF_H
 #define FOC_SENSORLESS_EKF_H
 #include "other.h"
-typedef struct EKF_t {
+struct EKF_t {
     float Valpha_I;//输入Valpha(V)
     float Vbeta_I;//输入Vbeta(V)
     float Ialpha_I;//输入Ialpha(A)

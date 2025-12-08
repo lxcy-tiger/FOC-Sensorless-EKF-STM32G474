@@ -17,7 +17,7 @@ void recordRunningData() {
     USB_data[USB_DataRecordIndex++]=Speed_PIstate.Measure;
     USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Valpha_O;
     USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Vbeta_O;
-    USB_data[USB_DataRecordIndex++]=ekf_est.Etheta_O;
+    USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Theta_I;
     USB_data[USB_DataRecordIndex++]=*((float*)&tail[0]);
     if (USB_DataRecordIndex==USB_HalfDataLength) {
         CDC_Transmit_FS((uint8_t*)USB_data,USB_HalfDataLength*4);
