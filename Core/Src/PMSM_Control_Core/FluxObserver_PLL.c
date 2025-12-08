@@ -21,8 +21,8 @@ static void FluxObserver_update(struct FluxObserver_PLL_t*fluxObserver_pll_est) 
     const float ubeta=fluxObserver_pll_est->Vbeta_I;
     const float ialpha=fluxObserver_pll_est->Ialpha_I;
     const float ibeta=fluxObserver_pll_est->Ibeta_I;
-    flux_r[0]=flux_r[0]-Ls*ialpha;
-    flux_r[1]=flux_r[1]-Ls*ibeta;
+    flux_r[0]=flux_s[0]-Ls*ialpha;
+    flux_r[1]=flux_s[1]-Ls*ibeta;
 
     flux_s[0]=T_s*(
         ualpha-Rs*ialpha+
