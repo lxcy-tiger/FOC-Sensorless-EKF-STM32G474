@@ -55,3 +55,6 @@ dkms.conf
 *.dwo
 
 .idea/
+
+# 允许特定的 CMSIS-DSP 静态库
+!Middlewares/ST/ARM/DSP/Lib/libarm_cortexM4lf_math.a
