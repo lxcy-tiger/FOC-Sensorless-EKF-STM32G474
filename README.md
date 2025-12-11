@@ -18,7 +18,7 @@
 |  EKF   |                                                                                      四维状态向量ialpha,ibeta,Espeed,Etheta                                                                                      |
 | 磁链观测器  |                                                    我们使用了PLL，并且参考了论文:《Performance Improvement of Nonlinear Flux Observer for Sensorless Control of PMSM》                                                    |
 | 与上位机通信 |                                                                                        USB通信，VOFA+(JustFloat协议)显示波形                                                                                        |
- |  软件版本  |                                              CLion 2025.3,openocd 0.12.0,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                              |
+ |  软件版本  |                                  CLion 2025.3,openocd 0.12.0,arm-gnu-toolchain 14.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                   |
 
 
 ## 🔌 **接线说明**
