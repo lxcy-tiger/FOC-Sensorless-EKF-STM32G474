@@ -101,7 +101,7 @@ void EKF_update(struct EKF_t*ekf) {
     K_k[3][1]=det*(-P_k_k_prev_0_3*P_k_k_prev_0_1+P_k_k_prev_1_3*PR00);
 
 
-    //ypCx=y-Cx~(k-1)=y-Cf(xk-1|k-1,uk,0)=Cxk|k-1
+    //ypCx=y-Cx~(k-1)=y-Cf(xk-1|k-1,uk,0)=y-Cxk|k-1
     float ypCx[2] = {
         ekf->Ialpha_I - x_k_k_prev[0],
         ekf->Ibeta_I - x_k_k_prev[1]
