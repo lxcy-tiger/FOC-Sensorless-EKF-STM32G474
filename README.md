@@ -41,7 +41,7 @@
 
 4.采样电路不同（即不使用配套的评估板而是你自己的板子），请修改PMSM_Control_Core/Hardware.c里的IA_K和IB_K参数，这里的参数表示每安电流对应ADC采样端多少伏的电压，由于上电时，会进行一次VCC_3V3，IA_REF，IB_REF离线校正，因此事实上这三个参数并不需要特意修改
 
-5.在不同的硬件上运行时，如果电机不能运行或者运行一会就停止，请调整一下PI参数，修改PMSM_Control_Core/PI_Controller.h里的GenerateFunction_PIController各项参数
+5.在不同的硬件上运行时，如果电机不能运行或者运行一会就停止，请调整一下PI参数，修改PMSM_Control_Core/PI_Controller.h里的GenerateFunction_PIController各项参数，修改PMSM_Control_Core/EKF.c里面的Q，R矩阵
 
 ## 📈 **运行以及波形查看**
 
@@ -78,10 +78,6 @@ PLL输出转速和角度:
 ![PLL输出角度](images/Simulink/PLL输出角度.png)
 
 ## 📎 **补充内容**
-
-·在添加了磁链观测器后，我们十分粗略地对比了EKF和磁链观测器在维持转速恒定上的性能，发现EKF在抑制转速波动上较为优秀，而磁链观测器有一些微小的转速波动，也有可能是参数调节不够完善的原因(下图:磁链观测器的转速波动)
-
-![磁链观测器性能比较](images/磁链观测器性能比较.png)
 
 ·在使用仿真模型时，注意不要将运行模式切换到"加速"或"快速加速"，而是使用"普通"，因为S-Function Builder在"加速"或"快速加速"似乎有些问题，仿真一次后，S-Function Builder里面的变量会维持仿真结束的值，如果再次仿真，建议重新编译一次代码，否则会出现一开始仿真，EKF的预测转速就是几百rad/s的奇怪结果
 
