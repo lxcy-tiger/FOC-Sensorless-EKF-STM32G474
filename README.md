@@ -94,6 +94,10 @@ include("cmake/gcc-arm-none-eabi.cmake")
 
 ![项目打开说明](images/项目打开说明.png)
 
+·新增keil项目迁移，现在可以使用keil打开该项目，点击下方链接即可获取:
+
+[访问keil项目](https://github.com/lxcy-tiger/FOC-Sensorless-EKF-STM32G474_keil)
+
 ## ⚠️ **安全须知**
 
 > 🔥 **本项目涉及电机驱动与功率电路，请务必遵守以下安全规范：**
