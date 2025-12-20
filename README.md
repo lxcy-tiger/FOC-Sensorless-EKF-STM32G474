@@ -92,6 +92,10 @@ include("cmake/gcc-arm-none-eabi.cmake")
 
 ·使用CLion打开项目时，不要直接打开CMakeLists.txt或整个文件夹，否则会出现可以编译，但没有下载按钮的情况，可以像新建项目那样打开该项目，如下图所示：
 
+·新增keil项目迁移，现在可以使用keil打开该项目，点击下方链接即可获取:
+
+[访问keil项目](https://github.com/lxcy-tiger/FOC-Sensorless-EKF-STM32G474_keil)
+
 ![项目打开说明](images/项目打开说明.png)
 
 ## ⚠️ **安全须知**
