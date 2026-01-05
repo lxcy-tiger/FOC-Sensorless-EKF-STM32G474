@@ -29,6 +29,7 @@
 #include "PMSM_Control_Core/PI_Controller.h"
 #include "PMSM_Control_Core/SVPWM.h"
 #include "PMSM_Control_Core/FluxObserver_PLL.h"
+#include "PMSM_Control_Core/SMO_PLL.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -258,20 +259,22 @@ void ADC1_2_IRQHandler(void)
   ClarkePark.clarke.Ic_I=Ic;
   Clarke_transform(&ClarkePark.clarke);
 
-  const int Observer=0;//0表示使用EKF,1表示使用FluxObserver-PLL
+  const int Observer=2;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL
   float Espeed=0;
   float Etheta=0;
+  /*
+  * 注意这里输入电压取上一次中断时计算的电压,事实上应当取上上次中断时计算的电压
+  * 时刻图:
+  * 中断时刻0 周期0 中断时刻1 周期1 中断时刻2 周期2
+  * 中断时刻0计算的电压(此时已经进入周期0),将会在周期1生效
+  * 所以说我们在中断时刻2应当取作用在周期1的电压
+  * 即 中断时刻0计算的电压
+  * 但是我们的ClarkePark.ipark变量只记录了前一个周期即中断时刻1计算的电压
+  * 由于中断时刻0和中断时刻1计算的电压不会有太大的差异，所以将就一下也能用
+  */
   if (Observer==0) {
     /*
     * 执行一次EKF,获取转子角度和速度
-    * 注意这里输入电压取上一次中断时计算的电压,事实上应当取上上次中断时计算的电压
-    * 时刻图:
-    * 中断时刻0 周期0 中断时刻1 周期1 中断时刻2 周期2
-    * 中断时刻0计算的电压(此时已经进入周期0),将会在周期1生效
-    * 所以说我们在中断时刻2应当取作用在周期1的电压
-    * 即 中断时刻0计算的电压
-    * 但是我们的ClarkePark.ipark变量只记录了前一个周期即中断时刻1计算的电压
-    * 由于中断时刻0和中断时刻1计算的电压不会有太大的差异，所以将就一下也能用
     */
     ekf_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     ekf_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
@@ -281,17 +284,9 @@ void ADC1_2_IRQHandler(void)
     Espeed=ekf_est.Espeed_O;
     Etheta=ekf_est.Etheta_O;
   }
-  else {
+  else if (Observer==1){
     /*
     * 执行一次FluxObserver-PLL,获取转子角度和速度
-    * 注意这里输入电压取上一次中断时计算的电压,事实上应当取上上次中断时计算的电压
-    * 时刻图:
-    * 中断时刻0 周期0 中断时刻1 周期1 中断时刻2 周期2
-    * 中断时刻0计算的电压(此时已经进入周期0),将会在周期1生效
-    * 所以说我们在中断时刻2应当取作用在周期1的电压
-    * 即 中断时刻0计算的电压
-    * 但是我们的ClarkePark.ipark变量只记录了前一个周期即中断时刻1计算的电压
-    * 由于中断时刻0和中断时刻1计算的电压不会有太大的差异，所以将就一下也能用
     */
     fluxObserver_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     fluxObserver_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
@@ -301,7 +296,30 @@ void ADC1_2_IRQHandler(void)
     Espeed=fluxObserver_pll_est.Espeed_O;
     Etheta=fluxObserver_pll_est.Etheta_O;
   }
-
+  else {
+    /*
+    * 执行一次SMO-PLL,获取转子角度和速度,注意SMO低速性能差,需要强拖启动
+    */
+    static uint32_t Align_startCount=0;//启动计数，计数到20000切换到完全闭环状态(即1s)
+    smo_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
+    smo_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
+    smo_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
+    smo_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
+    SMO_PLL_update(&smo_pll_est);
+    Espeed=smo_pll_est.Espeed_O;
+    Etheta=smo_pll_est.Etheta_O;
+    if (Align_startCount<100000) {
+      fluxObserver_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
+      fluxObserver_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
+      fluxObserver_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
+      fluxObserver_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
+      FluxObserver_PLL_update(&fluxObserver_pll_est);
+      Espeed=(Align_startCount*smo_pll_est.Espeed_O
+        +(100000-Align_startCount)*fluxObserver_pll_est.Espeed_O)/100000;
+      Etheta=(Align_startCount*smo_pll_est.Etheta_O
+        +(100000-Align_startCount)*fluxObserver_pll_est.Etheta_O)/100000;
+    }
+  }
   /*
    * 执行一次转速环，获取Q电流环给定
    */

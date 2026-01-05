@@ -10,10 +10,10 @@ static const float flux=0.00386335f;//磁通
 static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
 static const float k=5.f;//增益
-static float Ealpha_smo=0.f;
-static float Ebeta_smo=0.f;
-static float ialpha_est=0.f;
-static float ibeta_est=0.f;
+static float Ealpha_smo=0.f; //SMO的Ealpha开关项(k乘以sgn或sat函数)
+static float Ebeta_smo=0.f;//SMO的Ebeta开关项(k乘以sgn或sat函数)
+static float ialpha_est=0.f;//SMO预估ialpha
+static float ibeta_est=0.f;//SMO预估ibeta
 struct SMO_PLL_t smo_pll_est;
 
 static void SMO_update(struct SMO_PLL_t*smo_pll) {
@@ -22,7 +22,7 @@ static void SMO_update(struct SMO_PLL_t*smo_pll) {
     const float ialpha=smo_pll->Ialpha_I;
     const float ibeta=smo_pll->Ibeta_I;
 
-    static const uint8_t useSat=1;
+    static const uint8_t useSat=1;//使用饱和函数替代符号函数
     if (useSat) {
         static const float maxErr=0.3f;
         Ealpha_smo=k*sat(ialpha_est-ialpha,-maxErr,maxErr,-1,1);
@@ -35,8 +35,8 @@ static void SMO_update(struct SMO_PLL_t*smo_pll) {
     ialpha_est=ialpha_est+T_s*(1/Ls*ualpha-Rs/Ls*ialpha_est-1/Ls*Ealpha_smo);
     ibeta_est=ibeta_est+T_s*(1/Ls*ubeta-Rs/Ls*ibeta_est-1/Ls*Ebeta_smo);
 
-    smo_pll->E_alpha_O=IIR_filter2Ealpha(Ealpha_smo);
-    smo_pll->E_beta_O=IIR_filter2Ebeta(Ebeta_smo);
+    smo_pll->E_alpha_O=IIR_filter2Ealpha(Ealpha_smo);//高频开关项必须要经过低通滤波才能得到相对准确的反电动势项(500hz截止频率)
+    smo_pll->E_beta_O=IIR_filter2Ebeta(Ebeta_smo);//高频开关项必须要经过低通滤波才能得到相对准确的反电动势项(500hz截止频率)
 }
 
 static void PLL_update(struct SMO_PLL_t*smo_pll) {
@@ -48,7 +48,7 @@ static void PLL_update(struct SMO_PLL_t*smo_pll) {
     SMO_Speed_PI_update(&SMO_Speed_PIstate);
     Espeed=SMO_Speed_PIstate.Output;
 
-    static const uint8_t useLPF_Speed=1;
+    static const uint8_t useLPF_Speed=1;//使用低通滤波得到更平滑的转速输出(500hz截止频率)
     if (useLPF_Speed) {
         smo_pll->Espeed_O=IIR_filter2SMO_Speed(Espeed);
     }
