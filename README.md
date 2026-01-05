@@ -1,6 +1,6 @@
 # FOC-Sensorless-EKF-STM32G474
 
-无感FOC项目，采用EKF观测器或非线性磁链观测器，MCU采用STM32G474RET6，板子使用ST的X-NUCLEO-IHM07M1评估板，项目为Clion的CMAKE项目，可以使用Clion或VSCode打开。
+无感FOC项目，采用EKF观测器或非线性磁链观测器(Nonlinear Flux Observer)，MCU采用STM32G474RET6，板子使用ST的X-NUCLEO-IHM07M1评估板，项目为Clion的CMAKE项目，可以使用Clion或VSCode打开。
 
 
 ## 📋 **总览**
@@ -88,7 +88,7 @@ PLL输出转速和角度:
 include("cmake/gcc-arm-none-eabi.cmake")
 ```
 
-·在Documents文件夹里有关于观测器代码推导与实现的简略说明和解释(整个文档由个人整理和推导,可能有错误)
+·在Documents文件夹里有关于观测器代码推导与实现的简略说明和解释(整个文档由个人整理和推导,可能有错误,文档只说明了如何使用理论公式推导出代码,而理论公式如何得到,文档并没有说明,请参考相关的书籍)
 
 ·使用CLion打开项目时，不要直接打开CMakeLists.txt或整个文件夹，否则会出现可以编译，但没有下载按钮的情况，可以像新建项目那样打开该项目，如下图所示：
 

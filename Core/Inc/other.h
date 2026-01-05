@@ -86,9 +86,20 @@ static inline void GiveSpeedRpm(float espeed) {
     GiveESpeedRpm(espeed*POLE_PAIRS);
 }
 
-float IIR_filter(float input,const float a[3],const float b[3],float w[3]);
-float IIR_filter10A(float input);
-float IIR_filter10B(float input);
-float IIR_filter2A(float input);
-float IIR_filter2B(float input);
+float IIR_filter2Ia(float input);
+float IIR_filter2Ib(float input);
+
+static float sign(float input) {
+    if (input < 0) return -1;
+    if (input > 0) return 1;
+    return 0;
+}
+static float sat(float input,const float minx,const float maxx,const float miny,const float maxy) {
+    if (input < minx) return miny;
+    if (input > maxx) return maxy;
+    return (maxy-miny)/(maxx-minx)*(input-minx)+miny;
+}
+float IIR_filter2Ealpha(float input);
+float IIR_filter2Ebeta(float input);
+float IIR_filter2SMO_Speed(float input);
 #endif //FOC_SENSORLESS_OTHER_H

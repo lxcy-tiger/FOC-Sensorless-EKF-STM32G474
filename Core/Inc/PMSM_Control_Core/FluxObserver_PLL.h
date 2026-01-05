@@ -18,6 +18,6 @@ struct FluxObserver_PLL_t {
 };
 extern struct FluxObserver_PLL_t fluxObserver_pll_est;
 
-void FluxObserver_PLL_update(struct FluxObserver_PLL_t*fluxObserver_pll_est);
+void FluxObserver_PLL_update(struct FluxObserver_PLL_t*fluxObserver_pll);
 
 #endif //FOC_SENSORLESS_SMO_PLL_H

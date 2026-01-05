@@ -67,4 +67,6 @@ GenerateFunction_PIController(Speed,0.0005f,0.0000003f,1.f,-1.f)
     extern struct PI_Controller_t NAME##_PIstate;
 
 GenerateFunction_OnlyError_PIController(FluxObserver_Speed,200000,1000,3000,-3000)
+
+GenerateFunction_OnlyError_PIController(SMO_Speed,200,1,3000,-3000)
 #endif //FOC_SENSORLESS_PI_CONTROLLER_H
