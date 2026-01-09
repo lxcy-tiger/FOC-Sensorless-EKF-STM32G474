@@ -12,12 +12,13 @@ float USB_data[USB_MaxDataRecordLength+1000];//长度为USB_MaxDataRecordLength+
 unsigned char tail[4]={0x00,0x00,0x80,0x7f};
 //记录电机运行和系统状态，用于发送给上位机
 void recordRunningData() {
-    USB_data[USB_DataRecordIndex++]=ClarkePark.park.Ialpha_I;
+    extern uint8_t IF_startStep;//3步骤启动
+    USB_data[USB_DataRecordIndex++]=IF_startStep;
     USB_data[USB_DataRecordIndex++]=ClarkePark.park.Ibeta_I;
     USB_data[USB_DataRecordIndex++]=Speed_PIstate.Set;
     USB_data[USB_DataRecordIndex++]=Speed_PIstate.Measure;
-    USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Valpha_O;
-    USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Vbeta_O;
+    USB_data[USB_DataRecordIndex++]=Iq_PIstate.Set;
+    USB_data[USB_DataRecordIndex++]=Iq_PIstate.Measure;
     USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Theta_I;
     USB_data[USB_DataRecordIndex++]=*((float*)&tail[0]);
     if (USB_DataRecordIndex==USB_HalfDataLength) {

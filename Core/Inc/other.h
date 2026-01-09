@@ -88,7 +88,10 @@ static inline void GiveSpeedRpm(float espeed) {
 
 float IIR_filter2Ia(float input);
 float IIR_filter2Ib(float input);
-
+static float my_abs(float input) {
+    if (input < 0) return -input;
+    else return input;
+}
 static float sign(float input) {
     if (input < 0) return -1;
     if (input > 0) return 1;

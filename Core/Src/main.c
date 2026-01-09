@@ -132,7 +132,7 @@ int main(void)
   HAL_GPIO_WritePin(EN2_GPIO_Port,EN2_Pin,GPIO_PIN_SET);
   HAL_GPIO_WritePin(EN3_GPIO_Port,EN3_Pin,GPIO_PIN_SET);
   //测试：
-  GiveESpeed(500);
+  GiveESpeed(600);
   /* USER CODE END 2 */
 
   /* Infinite loop */

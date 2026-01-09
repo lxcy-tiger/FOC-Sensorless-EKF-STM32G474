@@ -9,7 +9,7 @@ static const float Ls=2.e-3f/2;//电感(H)
 static const float flux=0.00386335f;//磁通
 static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
-static const float k=5.f;//增益
+static const float k=3.f;//增益
 static float Ealpha_smo=0.f; //SMO的Ealpha开关项(k乘以sgn或sat函数)
 static float Ebeta_smo=0.f;//SMO的Ebeta开关项(k乘以sgn或sat函数)
 static float ialpha_est=0.f;//SMO预估ialpha
@@ -61,7 +61,7 @@ static void PLL_update(struct SMO_PLL_t*smo_pll) {
     while (Etheta < 0.f) Etheta += PI2;
 
     static const float wc=500*PI2;//低通滤波器截止频率
-    smo_pll->Etheta_O=Etheta+atan2f(Espeed,wc);
+    smo_pll->Etheta_O=Etheta+atan2f(smo_pll->Espeed_O,wc);
     while (smo_pll->Etheta_O >= PI2) smo_pll->Etheta_O -= PI2;
     while (smo_pll->Etheta_O < 0.f) smo_pll->Etheta_O += PI2;
 }

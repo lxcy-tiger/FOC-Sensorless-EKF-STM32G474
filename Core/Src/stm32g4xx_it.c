@@ -59,7 +59,7 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint8_t IF_startStep=1;//3步骤启动
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -299,25 +299,167 @@ void ADC1_2_IRQHandler(void)
   else {
     /*
     * 执行一次SMO-PLL,获取转子角度和速度,注意SMO低速性能差,需要强拖启动
+    * 强拖启动设计为3步骤：
+    * 1.完全由强拖决定角度和速度(期间也要进行SMO估计)
+    * 2.由强拖和SMO共同决定角度和速度(强拖的角度权重由1降为0,SMO的权重从0升到1)
+    * 3.闭环到SMO
     */
-    static uint32_t Align_startCount=0;//启动计数，计数到20000切换到完全闭环状态(即1s)
+    if (Speed_PIstate.Set==0)return;//在main函数发出转速给定前,先不要执行后面的代码,因为后面的强拖代码暂时设计为只能启动一次(以后会改为可多次启动)
     smo_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     smo_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
     smo_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
     smo_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
     SMO_PLL_update(&smo_pll_est);
-    Espeed=smo_pll_est.Espeed_O;
-    Etheta=smo_pll_est.Etheta_O;
-    if (Align_startCount<100000) {
-      fluxObserver_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
-      fluxObserver_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-      fluxObserver_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
-      fluxObserver_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
-      FluxObserver_PLL_update(&fluxObserver_pll_est);
-      Espeed=(Align_startCount*smo_pll_est.Espeed_O
-        +(100000-Align_startCount)*fluxObserver_pll_est.Espeed_O)/100000;
-      Etheta=(Align_startCount*smo_pll_est.Etheta_O
-        +(100000-Align_startCount)*fluxObserver_pll_est.Etheta_O)/100000;
+    static float IF_speed=0.0f;//IF启动速度
+    static float IF_theta=0.0f;//IF启动角度
+    static const float IF_speedAccelerate=0.01f;//IF启动加速度
+    static const float IF_StartCurrent=0.3f;//IF启动电流
+    static const float T_s=5e-5f;//SMO执行周期(20khz)
+    static float SMO_thetaRecord=0;//记录切换时的SMO角度值(1切到2)
+    static float end_CurrentSet=0;//阶段2的最终电流
+    static const float Iq_subSpeed=0.00005f;//降低Iq的速率
+    static const float Iq_addSpeed=0.0001f;//降低Iq的速率
+    if (IF_startStep==1) {
+      IF_speed+=IF_speedAccelerate;
+      IF_theta+=IF_speed*T_s;
+      while (IF_theta>=PI2)IF_theta-=PI2;
+      while (IF_theta<0)IF_theta+=PI2;
+      Espeed=IF_speed;
+      Speed_PIstate.Measure=Espeed;
+      Etheta=IF_theta;
+      /*
+      * 执行一次Park，获取dq电流
+      */
+      ClarkePark.park.Ialpha_I=ClarkePark.clarke.Ialpha_O;
+      ClarkePark.park.Ibeta_I=ClarkePark.clarke.Ibeta_O;
+      ClarkePark.park.Theta_I=Etheta;
+      Park_transform(&ClarkePark.park);
+
+      /*
+       * 执行一次dq电流环，获取Udq电压给定
+       */
+      Id_PIstate.Measure=ClarkePark.park.Id_O;
+      Id_PI_update(&Id_PIstate);
+      Iq_PIstate.Set=IF_StartCurrent;
+      Iq_PIstate.Measure=ClarkePark.park.Iq_O;
+      Iq_PI_update(&Iq_PIstate);
+
+      /*
+       * 执行一次反park，获取Ualpha和Ubeta
+       */
+      ClarkePark.ipark.Vd_I=Id_PIstate.Output;
+      ClarkePark.ipark.Vq_I=Iq_PIstate.Output;
+      ClarkePark.ipark.Theta_I=Etheta;
+      IPark_transform(&ClarkePark.ipark);
+
+      /*
+       * 对计算所得的矢量进行限幅(6.5V)
+       */
+      float modulus;
+      arm_sqrt_f32(ClarkePark.ipark.Valpha_O*ClarkePark.ipark.Valpha_O
+         +ClarkePark.ipark.Vbeta_O*ClarkePark.ipark.Vbeta_O,&modulus);
+      if (modulus>6.5f) {
+        ClarkePark.ipark.Valpha_O*=6.5f/modulus;
+        ClarkePark.ipark.Vbeta_O*=6.5f/modulus;
+      }
+
+      /*
+       * 执行一次SVPWM，更新计数值
+       */
+      SVPWM_Calculate_Set(ClarkePark.ipark.Valpha_O,ClarkePark.ipark.Vbeta_O);
+
+      //记录数据
+      recordRunningData();
+
+      if (IF_speed>=Speed_PIstate.Set) {
+        IF_startStep=2;
+        SMO_thetaRecord=smo_pll_est.Etheta_O;
+
+        //根据Te=3/2*iq*POLE_PAIRS*flux_f
+        //若认为观测器的角度是准确的theta_true=smo_pll_est.Espeed_O
+        //那么对于当前的强拖角度theta_false=IF_theta
+        //输出的实际电磁转矩(忽略损耗,我们认为它是负载转矩)
+        //为Te=3/2*IF_StartCurrent*cos(theta_true-theta_false)*POLE_PAIRS*flux_f
+        //即强拖角度必定滞后于观测器角度(滞后值在0~pi/2范围内)
+        //若慢慢转到观测器的角度，那么我们不需要那么大的输出电流
+        const float theta_true=smo_pll_est.Espeed_O;
+        const float theta_false=IF_theta;
+        const float theta_error=theta_true-theta_false;
+        float cosTheta,sinTheta;
+        arm_sin_cos_f32(theta_error*180/PI,&sinTheta,&cosTheta);
+        if (cosTheta<0)cosTheta=-cosTheta;//如果观测器准确，理论上不会滞后到pi/2~pi范围内，这条代码应当不会执行
+        end_CurrentSet=IF_StartCurrent*cosTheta;
+      }
+      return;
+    }
+    else if (IF_startStep==2) {
+      static const int32_t Smooth_ThetaTotalCounts=20000;//平滑角度切换到smo闭环
+      static int32_t Smooth_ThetaCounts=0;//平滑角度切换到smo闭环
+      IF_theta+=smo_pll_est.Espeed_O*T_s;
+      SMO_thetaRecord+=smo_pll_est.Espeed_O*T_s;
+      //前面不需要将它弄到0~2pi范围
+      Etheta=(IF_theta*(Smooth_ThetaTotalCounts-Smooth_ThetaCounts)
+        +SMO_thetaRecord*Smooth_ThetaCounts)/Smooth_ThetaTotalCounts;
+      Espeed=smo_pll_est.Espeed_O;
+      Speed_PIstate.Measure=Espeed;
+      while (Etheta>=PI2)Etheta-=PI2;
+      while (Etheta<0)Etheta+=PI2;
+      /*
+      * 执行一次Park，获取dq电流
+      */
+      ClarkePark.park.Ialpha_I=ClarkePark.clarke.Ialpha_O;
+      ClarkePark.park.Ibeta_I=ClarkePark.clarke.Ibeta_O;
+      ClarkePark.park.Theta_I=Etheta;
+      Park_transform(&ClarkePark.park);
+
+      /*
+       * 执行一次dq电流环，获取Udq电压给定
+       */
+      Id_PIstate.Measure=ClarkePark.park.Id_O;
+      Id_PI_update(&Id_PIstate);
+      if (smo_pll_est.Espeed_O>Speed_PIstate.Set)
+        Iq_PIstate.Set-=Iq_subSpeed;
+      else Iq_PIstate.Set+=Iq_addSpeed;
+      Iq_PIstate.Measure=ClarkePark.park.Iq_O;
+      Iq_PI_update(&Iq_PIstate);
+
+      /*
+       * 执行一次反park，获取Ualpha和Ubeta
+       */
+      ClarkePark.ipark.Vd_I=Id_PIstate.Output;
+      ClarkePark.ipark.Vq_I=Iq_PIstate.Output;
+      ClarkePark.ipark.Theta_I=Etheta;
+      IPark_transform(&ClarkePark.ipark);
+
+      /*
+       * 对计算所得的矢量进行限幅(6.5V)
+       */
+      float modulus;
+      arm_sqrt_f32(ClarkePark.ipark.Valpha_O*ClarkePark.ipark.Valpha_O
+         +ClarkePark.ipark.Vbeta_O*ClarkePark.ipark.Vbeta_O,&modulus);
+      if (modulus>6.5f) {
+        ClarkePark.ipark.Valpha_O*=6.5f/modulus;
+        ClarkePark.ipark.Vbeta_O*=6.5f/modulus;
+      }
+
+      /*
+       * 执行一次SVPWM，更新计数值
+       */
+      SVPWM_Calculate_Set(ClarkePark.ipark.Valpha_O,ClarkePark.ipark.Vbeta_O);
+
+      //记录数据
+      recordRunningData();
+      if (Smooth_ThetaCounts>=Smooth_ThetaTotalCounts && my_abs(smo_pll_est.Espeed_O-Speed_PIstate.Set)<20) {
+        static const float Speed_I_Ts_VAL=0.0000003f;
+        Speed_PIstate.AddUp=Iq_PIstate.Set/Speed_I_Ts_VAL;
+        IF_startStep=3;
+      }
+      if (Smooth_ThetaCounts<Smooth_ThetaTotalCounts)Smooth_ThetaCounts++;
+      return;
+    }
+    else {
+      Espeed=smo_pll_est.Espeed_O;
+      Etheta=smo_pll_est.Etheta_O;
     }
   }
   /*
