@@ -312,7 +312,7 @@ void ADC1_2_IRQHandler(void)
     SMO_PLL_update(&smo_pll_est);
     static float IF_speed=0.0f;//IF启动速度
     static float IF_theta=0.0f;//IF启动角度
-    static const float IF_speedAccelerate=0.01f;//IF启动加速度
+    static const float IF_speedAccelerate=0.005f;//IF启动加速度
     static const float IF_StartCurrent=0.3f;//IF启动电流
     static const float T_s=5e-5f;//SMO执行周期(20khz)
     static float SMO_thetaRecord=0;//记录切换时的SMO角度值(1切到2)
@@ -374,21 +374,8 @@ void ADC1_2_IRQHandler(void)
       if (IF_speed>=Speed_PIstate.Set) {
         IF_startStep=2;
         SMO_thetaRecord=smo_pll_est.Etheta_O;
-
-        //根据Te=3/2*iq*POLE_PAIRS*flux_f
-        //若认为观测器的角度是准确的theta_true=smo_pll_est.Espeed_O
-        //那么对于当前的强拖角度theta_false=IF_theta
-        //输出的实际电磁转矩(忽略损耗,我们认为它是负载转矩)
-        //为Te=3/2*IF_StartCurrent*cos(theta_true-theta_false)*POLE_PAIRS*flux_f
-        //即强拖角度必定滞后于观测器角度(滞后值在0~pi/2范围内)
-        //若慢慢转到观测器的角度，那么我们不需要那么大的输出电流
-        const float theta_true=smo_pll_est.Espeed_O;
-        const float theta_false=IF_theta;
-        const float theta_error=theta_true-theta_false;
-        float cosTheta,sinTheta;
-        arm_sin_cos_f32(theta_error*180/PI,&sinTheta,&cosTheta);
-        if (cosTheta<0)cosTheta=-cosTheta;//如果观测器准确，理论上不会滞后到pi/2~pi范围内，这条代码应当不会执行
-        end_CurrentSet=IF_StartCurrent*cosTheta;
+        static const float Speed_I_Ts_VAL=0.0000003f;
+        Speed_PIstate.AddUp=Iq_PIstate.Set/Speed_I_Ts_VAL;
       }
       return;
     }
@@ -405,6 +392,12 @@ void ADC1_2_IRQHandler(void)
       while (Etheta>=PI2)Etheta-=PI2;
       while (Etheta<0)Etheta+=PI2;
       /*
+      * 执行一次转速环，获取Q电流环给定
+      */
+      Speed_PIstate.Measure=Espeed;
+      Speed_PI_update(&Speed_PIstate);
+
+      /*
       * 执行一次Park，获取dq电流
       */
       ClarkePark.park.Ialpha_I=ClarkePark.clarke.Ialpha_O;
@@ -417,9 +410,7 @@ void ADC1_2_IRQHandler(void)
        */
       Id_PIstate.Measure=ClarkePark.park.Id_O;
       Id_PI_update(&Id_PIstate);
-      if (smo_pll_est.Espeed_O>Speed_PIstate.Set)
-        Iq_PIstate.Set-=Iq_subSpeed;
-      else Iq_PIstate.Set+=Iq_addSpeed;
+      Iq_PIstate.Set=Speed_PIstate.Output;
       Iq_PIstate.Measure=ClarkePark.park.Iq_O;
       Iq_PI_update(&Iq_PIstate);
 
@@ -450,8 +441,6 @@ void ADC1_2_IRQHandler(void)
       //记录数据
       recordRunningData();
       if (Smooth_ThetaCounts>=Smooth_ThetaTotalCounts && my_abs(smo_pll_est.Espeed_O-Speed_PIstate.Set)<20) {
-        static const float Speed_I_Ts_VAL=0.0000003f;
-        Speed_PIstate.AddUp=Iq_PIstate.Set/Speed_I_Ts_VAL;
         IF_startStep=3;
       }
       if (Smooth_ThetaCounts<Smooth_ThetaTotalCounts)Smooth_ThetaCounts++;
