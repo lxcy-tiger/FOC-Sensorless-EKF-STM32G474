@@ -229,6 +229,7 @@ void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
 
+ static uint8_t isSkipSpeed=0;
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
   /* USER CODE BEGIN ADC1_2_IRQn 1 */
@@ -313,71 +314,25 @@ void ADC1_2_IRQHandler(void)
     static float IF_speed=0.0f;//IF启动速度
     static float IF_theta=0.0f;//IF启动角度
     static const float IF_speedAccelerate=0.005f;//IF启动加速度
-    static const float IF_StartCurrent=0.3f;//IF启动电流
+    static const float IF_StartCurrent=0.6f;//IF启动电流
     static const float T_s=5e-5f;//SMO执行周期(20khz)
     static float SMO_thetaRecord=0;//记录切换时的SMO角度值(1切到2)
-    static float end_CurrentSet=0;//阶段2的最终电流
-    static const float Iq_subSpeed=0.00005f;//降低Iq的速率
-    static const float Iq_addSpeed=0.0001f;//降低Iq的速率
     if (IF_startStep==1) {
       IF_speed+=IF_speedAccelerate;
       IF_theta+=IF_speed*T_s;
       while (IF_theta>=PI2)IF_theta-=PI2;
       while (IF_theta<0)IF_theta+=PI2;
       Espeed=IF_speed;
-      Speed_PIstate.Measure=Espeed;
       Etheta=IF_theta;
-      /*
-      * 执行一次Park，获取dq电流
-      */
-      ClarkePark.park.Ialpha_I=ClarkePark.clarke.Ialpha_O;
-      ClarkePark.park.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-      ClarkePark.park.Theta_I=Etheta;
-      Park_transform(&ClarkePark.park);
-
-      /*
-       * 执行一次dq电流环，获取Udq电压给定
-       */
-      Id_PIstate.Measure=ClarkePark.park.Id_O;
-      Id_PI_update(&Id_PIstate);
-      Iq_PIstate.Set=IF_StartCurrent;
-      Iq_PIstate.Measure=ClarkePark.park.Iq_O;
-      Iq_PI_update(&Iq_PIstate);
-
-      /*
-       * 执行一次反park，获取Ualpha和Ubeta
-       */
-      ClarkePark.ipark.Vd_I=Id_PIstate.Output;
-      ClarkePark.ipark.Vq_I=Iq_PIstate.Output;
-      ClarkePark.ipark.Theta_I=Etheta;
-      IPark_transform(&ClarkePark.ipark);
-
-      /*
-       * 对计算所得的矢量进行限幅(6.5V)
-       */
-      float modulus;
-      arm_sqrt_f32(ClarkePark.ipark.Valpha_O*ClarkePark.ipark.Valpha_O
-         +ClarkePark.ipark.Vbeta_O*ClarkePark.ipark.Vbeta_O,&modulus);
-      if (modulus>6.5f) {
-        ClarkePark.ipark.Valpha_O*=6.5f/modulus;
-        ClarkePark.ipark.Vbeta_O*=6.5f/modulus;
-      }
-
-      /*
-       * 执行一次SVPWM，更新计数值
-       */
-      SVPWM_Calculate_Set(ClarkePark.ipark.Valpha_O,ClarkePark.ipark.Vbeta_O);
-
-      //记录数据
-      recordRunningData();
-
+      Speed_PIstate.Output=IF_StartCurrent;
+      isSkipSpeed=1;
       if (IF_speed>=Speed_PIstate.Set) {
         IF_startStep=2;
+        isSkipSpeed=0;
         SMO_thetaRecord=smo_pll_est.Etheta_O;
         static const float Speed_I_Ts_VAL=0.0000003f;
         Speed_PIstate.AddUp=Iq_PIstate.Set/Speed_I_Ts_VAL;
       }
-      return;
     }
     else if (IF_startStep==2) {
       static const int32_t Smooth_ThetaTotalCounts=20000;//平滑角度切换到smo闭环
@@ -388,63 +343,12 @@ void ADC1_2_IRQHandler(void)
       Etheta=(IF_theta*(Smooth_ThetaTotalCounts-Smooth_ThetaCounts)
         +SMO_thetaRecord*Smooth_ThetaCounts)/Smooth_ThetaTotalCounts;
       Espeed=smo_pll_est.Espeed_O;
-      Speed_PIstate.Measure=Espeed;
       while (Etheta>=PI2)Etheta-=PI2;
       while (Etheta<0)Etheta+=PI2;
-      /*
-      * 执行一次转速环，获取Q电流环给定
-      */
-      Speed_PIstate.Measure=Espeed;
-      Speed_PI_update(&Speed_PIstate);
-
-      /*
-      * 执行一次Park，获取dq电流
-      */
-      ClarkePark.park.Ialpha_I=ClarkePark.clarke.Ialpha_O;
-      ClarkePark.park.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-      ClarkePark.park.Theta_I=Etheta;
-      Park_transform(&ClarkePark.park);
-
-      /*
-       * 执行一次dq电流环，获取Udq电压给定
-       */
-      Id_PIstate.Measure=ClarkePark.park.Id_O;
-      Id_PI_update(&Id_PIstate);
-      Iq_PIstate.Set=Speed_PIstate.Output;
-      Iq_PIstate.Measure=ClarkePark.park.Iq_O;
-      Iq_PI_update(&Iq_PIstate);
-
-      /*
-       * 执行一次反park，获取Ualpha和Ubeta
-       */
-      ClarkePark.ipark.Vd_I=Id_PIstate.Output;
-      ClarkePark.ipark.Vq_I=Iq_PIstate.Output;
-      ClarkePark.ipark.Theta_I=Etheta;
-      IPark_transform(&ClarkePark.ipark);
-
-      /*
-       * 对计算所得的矢量进行限幅(6.5V)
-       */
-      float modulus;
-      arm_sqrt_f32(ClarkePark.ipark.Valpha_O*ClarkePark.ipark.Valpha_O
-         +ClarkePark.ipark.Vbeta_O*ClarkePark.ipark.Vbeta_O,&modulus);
-      if (modulus>6.5f) {
-        ClarkePark.ipark.Valpha_O*=6.5f/modulus;
-        ClarkePark.ipark.Vbeta_O*=6.5f/modulus;
-      }
-
-      /*
-       * 执行一次SVPWM，更新计数值
-       */
-      SVPWM_Calculate_Set(ClarkePark.ipark.Valpha_O,ClarkePark.ipark.Vbeta_O);
-
-      //记录数据
-      recordRunningData();
       if (Smooth_ThetaCounts>=Smooth_ThetaTotalCounts && my_abs(smo_pll_est.Espeed_O-Speed_PIstate.Set)<20) {
         IF_startStep=3;
       }
       if (Smooth_ThetaCounts<Smooth_ThetaTotalCounts)Smooth_ThetaCounts++;
-      return;
     }
     else {
       Espeed=smo_pll_est.Espeed_O;
@@ -455,7 +359,7 @@ void ADC1_2_IRQHandler(void)
    * 执行一次转速环，获取Q电流环给定
    */
   Speed_PIstate.Measure=Espeed;
-  Speed_PI_update(&Speed_PIstate);
+  if (isSkipSpeed==0)Speed_PI_update(&Speed_PIstate);
 
   /*
    * 执行一次Park，获取dq电流
