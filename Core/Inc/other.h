@@ -6,7 +6,7 @@
 #define FOC_SENSORLESS_OTHER_H
 #include "arm_math.h"
 #include "main.h"
-#include "PMSM_Control_Core/Hardware.h"
+#include "PMSM_Control_Core/PMSM_Parameter.h"
 #include "PMSM_Control_Core/PI_Controller.h"
 // 数学类常数与函数
 static const float Sqrt_3=1.7320508075688772935274463415059f;//根号三(编译器自动截断)
@@ -59,17 +59,18 @@ static inline float median_5(float a, float b, float c, float d, float e) {
     }
 }
 #define GenerateFunction_MedianFilter5(NAME) \
-static float NAME##_buf[5] = {0}; \
-static uint8_t NAME##_buf_index = 0; \
-float median_filter_##NAME##_5(float NAME##_input) { \
-NAME##_buf[NAME##_buf_index] = NAME##_input; \
-NAME##_buf_index = (NAME##_buf_index + 1) % 5; \
-return median_5(NAME##_buf[0], NAME##_buf[1], NAME##_buf[2], NAME##_buf[3], NAME##_buf[4]); \
-}
+    static float NAME##_buf[5] = {0}; \
+    static uint8_t NAME##_buf_index = 0; \
+    float median_filter_##NAME##_5(float NAME##_input) { \
+    NAME##_buf[NAME##_buf_index] = NAME##_input; \
+    NAME##_buf_index = (NAME##_buf_index + 1) % 5; \
+    return median_5(NAME##_buf[0], NAME##_buf[1], NAME##_buf[2], NAME##_buf[3], NAME##_buf[4]); \
+    }
+
 float median_filter_Ia_5(float Ia_input);
 float median_filter_Ib_5(float Ib_input);
 
-//给定电角速度
+//给定电角速度(rad/s)
 static inline void GiveESpeed(float espeed) {
     Speed_PIstate.Set=espeed;
 }
@@ -77,7 +78,7 @@ static inline void GiveESpeed(float espeed) {
 static inline void GiveESpeedRpm(float espeed) {
     GiveESpeed(espeed*PI2/60);
 }
-//给定机械角速度
+//给定机械角速度(rad/s)
 static inline void GiveSpeed(float espeed) {
     GiveESpeed(espeed*POLE_PAIRS);
 }
@@ -88,21 +89,37 @@ static inline void GiveSpeedRpm(float espeed) {
 
 float IIR_filter2Ia(float input);
 float IIR_filter2Ib(float input);
-static float my_abs(float input) {
+static inline float my_abs(float input) {
     if (input < 0) return -input;
     else return input;
 }
-static float sign(float input) {
+static inline float sign(float input) {
     if (input < 0) return -1;
     if (input > 0) return 1;
     return 0;
 }
-static float sat(float input,const float minx,const float maxx,const float miny,const float maxy) {
+static inline float sat(float input,const float minx,const float maxx,const float miny,const float maxy) {
     if (input < minx) return miny;
     if (input > maxx) return maxy;
     return (maxy-miny)/(maxx-minx)*(input-minx)+miny;
 }
-float IIR_filter2Ealpha(float input);
-float IIR_filter2Ebeta(float input);
-float IIR_filter2SMO_Speed(float input);
+
+//SMO的IIR滤波器(已弃用，而是改为简单的低通滤波器)
+float __attribute__((unused)) IIR_filter2Ealpha(float input);
+float __attribute__((unused)) IIR_filter2Ebeta(float input);
+float __attribute__((unused)) IIR_filter2SMO_Speed(float input);
+
+//自动生成函数(简单的一阶低通滤波器,参数NAME:函数名称,f_c截止频率(hz))
+#define GenerateFunction_LowPassFilter(NAME,f_c) \
+    static float lowPass_filter_##NAME(float NAME##_input){\
+    static float y_old=0;\
+    const float k=2*PI2*T_s*f_c;\
+    y_old=k*NAME##_input+(1-k)*y_old;\
+    return y_old;\
+    }
+//SMO的反电动势进行低通滤波的一阶滤波器的截止频率(hz)
+#define SMO_E_lowPass_Fc 500
+GenerateFunction_LowPassFilter(SMO_Ealpha,SMO_E_lowPass_Fc)
+GenerateFunction_LowPassFilter(SMO_Ebeta,SMO_E_lowPass_Fc)
+GenerateFunction_LowPassFilter(SMO_Espeed,50)
 #endif //FOC_SENSORLESS_OTHER_H

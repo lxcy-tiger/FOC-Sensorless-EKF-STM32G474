@@ -17,7 +17,7 @@ struct FluxObserver_PLL_t {
     float Etheta_O;//输出电角度Etheta(rad)
 };
 extern struct FluxObserver_PLL_t fluxObserver_pll_est;
-
+void FluxObserver_init();//初始化FluxObserver,启动前必须执行一次
 void FluxObserver_PLL_update(struct FluxObserver_PLL_t*fluxObserver_pll);
 
 #endif //FOC_SENSORLESS_SMO_PLL_H

@@ -1,6 +1,6 @@
 # FOC-Sensorless-EKF-STM32G474
 
-无感FOC项目，采用EKF观测器或非线性磁链观测器(Nonlinear Flux Observer)，MCU采用STM32G474RET6，板子使用ST的X-NUCLEO-IHM07M1评估板，项目为Clion的CMAKE项目，可以使用Clion或VSCode打开。
+无感FOC项目，采用EKF观测器或非线性磁链观测器(Nonlinear Flux Observer)或滑膜观测器(SMO)，MCU采用STM32G474RET6，板子使用ST的X-NUCLEO-IHM07M1评估板，项目为Clion的CMAKE项目，可以使用Clion或VSCode打开。
 
 
 ## 📋 **总览**
@@ -9,16 +9,17 @@
 |:------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 |  核心板   |                                                                                              STM32G474RET6核心板                                                                                              |
 |  驱动板   |                                                                                              X-NUCLEO-IHM07M1                                                                                              |
- |  采样电阻  |                                                                                              330mOhm,双电阻采样方案                                                                                               |
+|  采样电阻  |                                                                                              330mOhm,双电阻采样方案                                                                                               |
 | 永磁同步电机 |                                                                          参数为额定电压12V,最大电流1A,Rs=2.75Ohm,Ls=1mH,flux=0.00386335(V·s)                                                                          |
 | SVPWM  | 使用HRTIM(STM32G474特有的高精度计时器)产生PWM<br>计时器频率:0.68Ghz(Master Timer) 1.36Ghz(Timer A,B,C)<br>period值:34000(合Master Timer或Timer ABC 0.68Ghz/34000=20khz)<br>PWM模式:中心对称(中间为高电平,两侧为低电平)<br>ADC触发时机:Master Timer更新时 |
 |  电流环   |                                                                                              PI控制(有抗饱和),20khz                                                                                              |
- |  转速环   |                                                                                      PI控制(有抗饱和),20khz(似乎有些过高,但是无所谓了)                                                                                       |
- |  观测器   |                                                                          EKF(20khz)或改进的磁链观测器(20khz)<br>可在ADC1中断中更改变量Observer的值切换                                                                           | 
+|  转速环   |                                                                                      PI控制(有抗饱和),20khz(似乎有些过高,但是无所谓了)                                                                                       |
+|  观测器   |                                                                    EKF(20khz)或改进的磁链观测器(20khz)或滑膜观测器(20khz)<br>可在ADC1中断中更改变量Observer的值切换                                                                    | 
 |  EKF   |                                                                                      四维状态向量ialpha,ibeta,Espeed,Etheta                                                                                      |
 | 磁链观测器  |                                                    我们使用了PLL，并且参考了论文:《Performance Improvement of Nonlinear Flux Observer for Sensorless Control of PMSM》                                                    |
+|  SMO   |                                       滑膜观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s),需要使用IF启动,可以在ADC中断里修改IF启动各项参数<br>SMO的低通滤波需要相位补偿,仿真结果显示仍有小角度误差,等待下一版本修复                                       |
 | 与上位机通信 |                                                                                        USB通信，VOFA+(JustFloat协议)显示波形                                                                                        |
- |  软件版本  |                                  CLion 2025.3,openocd 0.12.0,arm-gnu-toolchain 14.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                   |
+|  软件版本  |                                  CLion 2025.3,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                   |
 
 
 ## 🔌 **接线说明**
@@ -33,15 +34,15 @@
 
 由于考虑到不同的硬件情况，不同PMSM对应的参数也不同，为了让代码能适配其它的硬件情况，请按以下步骤修改对应的代码：
 
-1.PMSM的电阻，电感，磁链不同，请修改PMSM_Control_Core/EKF.c里的void EKF_init()对应的参数
+1.PMSM的电阻，电感，磁链不同，请修改PMSM_Control_Core/PMSM_Parameter.h里对应的参数
 
-2.PMSM的极对数不同，请修改Hardware.h里的POLE_PAIRS参数
+2.PMSM的极对数不同，请修改PMSM_Control_Core/PMSM_Parameter.h里的POLE_PAIRS参数
 
 3.直流母线电压不同，请修改PMSM_Control_Core/SVPWM.c里的Udc和DivUdc参数
 
-4.采样电路不同（即不使用配套的评估板而是你自己的板子），请修改PMSM_Control_Core/Hardware.c里的IA_K和IB_K参数，这里的参数表示每安电流对应ADC采样端多少伏的电压，由于上电时，会进行一次VCC_3V3，IA_REF，IB_REF离线校正，因此事实上这三个参数并不需要特意修改
+4.采样电路不同（即不使用配套的评估板而是你自己的板子），请修改PMSM_Control_Core/Hardware.c里的IA_K和IB_K参数，这里的参数表示每安电流对应ADC采样端多少伏的电压，此外，上电时，会进行一次VCC_3V3，IA_REF，IB_REF离线校正，因此事实上这三个参数并不需要特意修改
 
-5.在不同的硬件上运行时，如果电机不能运行或者运行一会就停止，请调整一下PI参数，修改PMSM_Control_Core/PI_Controller.h里的GenerateFunction_PIController各项参数，修改PMSM_Control_Core/EKF.c里面的Q，R矩阵
+5.在不同的硬件上运行时，如果电机不能运行或者运行一会就停止，请调整一下PI参数，修改PMSM_Control_Core/PI_Controller.h里的GenerateFunction_PIController各项参数，修改PMSM_Control_Core/EKF.c里面的Q，R矩阵(或其它观测器的参数)
 
 ## 📈 **运行以及波形查看**
 
@@ -88,7 +89,7 @@ PLL输出转速和角度:
 include("cmake/gcc-arm-none-eabi.cmake")
 ```
 
-·在Documents文件夹里有关于观测器代码推导与实现的简略说明和解释(整个文档由个人整理和推导,可能有错误,文档只说明了如何使用理论公式推导出代码,而理论公式如何得到,文档并没有说明,请参考相关的书籍)
+·在Documents文件夹里有关于观测器代码推导与实现的简略说明和解释(整个文档的公式由个人整理和推导,可能有错误,不一定和主流方案一致,文档只说明了如何使用理论公式推导出代码,而理论公式如何得到,文档并没有说明,请参考相关的书籍)
 
 ·使用CLion打开项目时，不要直接打开CMakeLists.txt或整个文件夹，否则会出现可以编译，但没有下载按钮的情况，可以像新建项目那样打开该项目，如下图所示：
 

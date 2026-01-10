@@ -6,20 +6,20 @@
  *                                  Jiali Liu and Yongchang Zhang , Senior Member, IEEE
  */
 #include "PMSM_Control_Core/FluxObserver_PLL.h"
-
-static const float T_s=5e-5f;//采样时间(磁链观测器执行周期)(s)
-static const float Rs=5.5f/2;//电阻(Ohm)
-static const float Ls=2.e-3f/2;//电感(H)
-static float flux_s[2]={0.00386335f,0.f};//定子磁通预测值(V·s)
+#include "PMSM_Control_Core/PMSM_Parameter.h"
+static float flux_s[2]={0.f,0.f};//定子磁通预测值(V·s)
 static float flux_r[2]={0.f,0.f};//转子磁通预测值(V·s)
-static const float flux_e=0.00386335f;//转子磁通幅值(定值)
+static float flux_e=0.f;//转子磁通幅值(定值)
 static const float lambda=800.f;//增益
 static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
 static const float k=1.f;//切向增益
 
 struct FluxObserver_PLL_t fluxObserver_pll_est;
-
+void FluxObserver_init() {
+    flux_e=flux;
+    flux_s[0]=flux;
+}
 static void FluxObserver_update(struct FluxObserver_PLL_t*fluxObserver_pll) {
     const float ualpha=fluxObserver_pll->Valpha_I;
     const float ubeta=fluxObserver_pll->Vbeta_I;

@@ -2,11 +2,7 @@
 // Created by lxcy on 2025/10/9.
 //
 #include "PMSM_Control_Core/EKF.h"
-
-static float Rs; //电阻(Ohm)
-static float Ls; //电感(H)
-static float flux; //磁通(V·s)
-static float T_s;//采样时间(EKF执行周期)(s)
+#include "PMSM_Control_Core/PMSM_Parameter.h"
 static float TsDivLs;//数值上等于T_s/Ls，用于加速计算过程
 static float x_k_k_prev[4]; //先验估计
 float x_k_k[4]; //后验估计
@@ -29,10 +25,6 @@ static float K_k[4][2]; //卡尔曼增益
 
 struct EKF_t ekf_est;
 void EKF_init() {
-    Rs = 5.5f/2;
-    Ls = 2.e-3f/2;
-    flux =0.00386335f;
-    T_s=5e-5f;
     TsDivLs=T_s/Ls;
 }
 

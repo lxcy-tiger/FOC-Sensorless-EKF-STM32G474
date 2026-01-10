@@ -11,6 +11,6 @@ extern uint16_t IB_REF; //Ib偏置电压ADC值(12位ADC),根据电阻网络计�
 extern const float IA_K;//增益，由电阻网络计算得到(取正值)，单位V/A
 extern const float IB_K;//增益，由电阻网络计算得到(取正值)，单位V/A
 
-static const uint8_t POLE_PAIRS=7; //极对数
+
 void Offline_IabVcc_Adjust();
 #endif //FOC_SENSORLESS_HARDWARE_H

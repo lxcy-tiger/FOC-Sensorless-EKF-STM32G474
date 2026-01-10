@@ -12,7 +12,6 @@ float USB_data[USB_MaxDataRecordLength+1000];//长度为USB_MaxDataRecordLength+
 unsigned char tail[4]={0x00,0x00,0x80,0x7f};
 //记录电机运行和系统状态，用于发送给上位机
 void recordRunningData() {
-    extern uint8_t IF_startStep;//3步骤启动
     USB_data[USB_DataRecordIndex++]=IF_startStep;
     USB_data[USB_DataRecordIndex++]=ClarkePark.park.Ibeta_I;
     USB_data[USB_DataRecordIndex++]=Speed_PIstate.Set;

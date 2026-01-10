@@ -2,11 +2,7 @@
 // Created by lxcy on 2026/1/4.
 //
 #include "PMSM_Control_Core/SMO_PLL.h"
-
-static const float T_s=5e-5f;//采样时间(SMO执行周期)(s)
-static const float Rs=5.5f/2;//电阻(Ohm)
-static const float Ls=2.e-3f/2;//电感(H)
-static const float flux=0.00386335f;//磁通
+#include "PMSM_Control_Core/PMSM_Parameter.h"
 static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
 static const float k=5.f;//增益
@@ -35,8 +31,11 @@ static void SMO_update(struct SMO_PLL_t*smo_pll) {
     ialpha_est=ialpha_est+T_s*(1/Ls*ualpha-Rs/Ls*ialpha_est-1/Ls*Ealpha_smo);
     ibeta_est=ibeta_est+T_s*(1/Ls*ubeta-Rs/Ls*ibeta_est-1/Ls*Ebeta_smo);
 
-    smo_pll->E_alpha_O=IIR_filter2Ealpha(Ealpha_smo);//高频开关项必须要经过低通滤波才能得到相对准确的反电动势项(500hz截止频率)
-    smo_pll->E_beta_O=IIR_filter2Ebeta(Ebeta_smo);//高频开关项必须要经过低通滤波才能得到相对准确的反电动势项(500hz截止频率)
+
+    smo_pll->E_alpha_O=lowPass_filter_SMO_Ealpha(Ealpha_smo);//高频开关项必须要经过低通滤波才能得到相对准确的反电动势项(500hz截止频率)
+    smo_pll->E_beta_O=lowPass_filter_SMO_Ebeta(Ebeta_smo);//高频开关项必须要经过低通滤波才能得到相对准确的反电动势项(500hz截止频率)
+    //smo_pll->E_alpha_O=IIR_filter2Ealpha(Ealpha_smo);//高频开关项必须要经过低通滤波才能得到相对准确的反电动势项(500hz截止频率)
+    //smo_pll->E_beta_O=IIR_filter2Ebeta(Ebeta_smo);//高频开关项必须要经过低通滤波才能得到相对准确的反电动势项(500hz截止频率)
 }
 
 static void PLL_update(struct SMO_PLL_t*smo_pll) {
@@ -50,7 +49,8 @@ static void PLL_update(struct SMO_PLL_t*smo_pll) {
 
     static const uint8_t useLPF_Speed=1;//使用低通滤波得到更平滑的转速输出(500hz截止频率)
     if (useLPF_Speed) {
-        smo_pll->Espeed_O=IIR_filter2SMO_Speed(Espeed);
+        smo_pll->Espeed_O=lowPass_filter_SMO_Espeed(Espeed);
+        //smo_pll->Espeed_O=IIR_filter2SMO_Speed(Espeed);
     }
     else {
         smo_pll->Espeed_O=Espeed;
@@ -60,7 +60,7 @@ static void PLL_update(struct SMO_PLL_t*smo_pll) {
     while (Etheta >= PI2) Etheta -= PI2;
     while (Etheta < 0.f) Etheta += PI2;
 
-    static const float wc=500*PI2;//低通滤波器截止频率
+    static const float wc=SMO_E_lowPass_Fc*PI2;//低通滤波器截止频率(rad/s)
     smo_pll->Etheta_O=Etheta+atan2f(smo_pll->Espeed_O,wc);
     while (smo_pll->Etheta_O >= PI2) smo_pll->Etheta_O -= PI2;
     while (smo_pll->Etheta_O < 0.f) smo_pll->Etheta_O += PI2;

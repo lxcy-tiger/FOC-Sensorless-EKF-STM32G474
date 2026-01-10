@@ -34,6 +34,8 @@
 #include "PMSM_Control_Core/Clarke_Park.h"
 #include "PMSM_Control_Core/EKF.h"
 #include "PMSM_Control_Core/PI_Controller.h"
+#include "PMSM_Control_Core/Hardware.h"
+#include "PMSM_Control_Core/FluxObserver_PLL.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -105,7 +107,8 @@ int main(void)
 
   //初始化EKF
   EKF_init();
-
+  //初始化FluxObserver
+  FluxObserver_init();
   //ADC单端输入校准
   __HAL_RCC_ADC12_CLK_ENABLE();
   if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK)Error_Handler();

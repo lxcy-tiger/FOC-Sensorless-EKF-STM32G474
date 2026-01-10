@@ -41,7 +41,8 @@ typedef struct PI_Controller_t {
 
 GenerateFunction_PIController(Id,10.f,0.01f,6.5f,-6.5f)
 GenerateFunction_PIController(Iq,10.f,0.01f,6.5f,-6.5f)
-GenerateFunction_PIController(Speed,0.0005f,0.0000003f,1.f,-1.f)
+#define Speed_I_Ts_VAL 0.000003f
+GenerateFunction_PIController(Speed,0.001f,Speed_I_Ts_VAL,1.f,-1.f)
 
 //使用宏定义生成代码(没有设定值与测量值，只有误差值作为输入):
 //(NAME函数名称,P_VAL比例参数,I_Ts_VAL积分参数(I*Ts类型),MAX_VAL输出最大值,MIN_VAL输出最小值)
@@ -68,5 +69,5 @@ GenerateFunction_PIController(Speed,0.0005f,0.0000003f,1.f,-1.f)
 
 GenerateFunction_OnlyError_PIController(FluxObserver_Speed,200000,1000,3000,-3000)
 
-GenerateFunction_OnlyError_PIController(SMO_Speed,800,0.2,3000,-3000)
+GenerateFunction_OnlyError_PIController(SMO_Speed,500,0.1,3000,-3000)
 #endif //FOC_SENSORLESS_PI_CONTROLLER_H

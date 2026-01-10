@@ -228,8 +228,8 @@ void DMA1_Channel1_IRQHandler(void)
 void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
-
- static uint8_t isSkipSpeed=0;
+  //SMO的强拖启动一阶段需要给电流环固定给定，不需要转速环，跳过更新
+  static uint8_t isSkipSpeed=0;
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
   /* USER CODE BEGIN ADC1_2_IRQn 1 */
@@ -260,7 +260,7 @@ void ADC1_2_IRQHandler(void)
   ClarkePark.clarke.Ic_I=Ic;
   Clarke_transform(&ClarkePark.clarke);
 
-  const int Observer=2;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL
+  const int Observer=0;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL
   float Espeed=0;
   float Etheta=0;
   /*
@@ -302,7 +302,11 @@ void ADC1_2_IRQHandler(void)
     * 执行一次SMO-PLL,获取转子角度和速度,注意SMO低速性能差,需要强拖启动
     * 强拖启动设计为3步骤：
     * 1.完全由强拖决定角度和速度(期间也要进行SMO估计)
-    * 2.由强拖和SMO共同决定角度和速度(强拖的角度权重由1降为0,SMO的权重从0升到1)
+    *   关闭转速环但启用电流环,给定固定的电流设定值,一阶段结束时记录强拖最终角度和SMO最终角度
+    * 2.强拖角度和SMO角度有偏差
+    *   这里同步使用SMO的速度来增长强拖角度和SMO角度，并且加权平均，最终角度从强拖角度过渡到SMO角度
+    *   期间进行转速环和电流环，转速环会慢慢降低电流环的给定（我们的IF启动电流是要比负载实际所需的电流要高的）
+    *   直到转速达到给定，电流Iq与负载所需的电流相匹配
     * 3.闭环到SMO
     */
     if (Speed_PIstate.Set==0)return;//在main函数发出转速给定前,先不要执行后面的代码,因为后面的强拖代码暂时设计为只能启动一次(以后会改为可多次启动)
@@ -315,7 +319,6 @@ void ADC1_2_IRQHandler(void)
     static float IF_theta=0.0f;//IF启动角度
     static const float IF_speedAccelerate=0.005f;//IF启动加速度
     static const float IF_StartCurrent=0.6f;//IF启动电流
-    static const float T_s=5e-5f;//SMO执行周期(20khz)
     static float SMO_thetaRecord=0;//记录切换时的SMO角度值(1切到2)
     if (IF_startStep==1) {
       IF_speed+=IF_speedAccelerate;
@@ -324,13 +327,15 @@ void ADC1_2_IRQHandler(void)
       while (IF_theta<0)IF_theta+=PI2;
       Espeed=IF_speed;
       Etheta=IF_theta;
-      Speed_PIstate.Output=IF_StartCurrent;
-      isSkipSpeed=1;
+      Speed_PIstate.Output=IF_StartCurrent;//这里把转速环的输出改为我们的IF启动电流
+      isSkipSpeed=1;//不要更新转速环，否则Speed_PIstate.Output会被覆盖
       if (IF_speed>=Speed_PIstate.Set) {
         IF_startStep=2;
         isSkipSpeed=0;
         SMO_thetaRecord=smo_pll_est.Etheta_O;
-        static const float Speed_I_Ts_VAL=0.0000003f;
+        //这里把Iq_PIstate.Set(其实就是IF_StartCurrent)全部变成转速环的积分项(以保证切换时转速环的输出不会突变)
+        //强拖时SMO的预测非常准确，所以转速误差项(设定speed-SMO的speed)非常小，转速环比例项基本为0，基本是积分项AddUp*Speed_I_Ts_VAL=Output
+        //随后就靠转速环自动调节了
         Speed_PIstate.AddUp=Iq_PIstate.Set/Speed_I_Ts_VAL;
       }
     }
