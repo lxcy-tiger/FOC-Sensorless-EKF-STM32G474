@@ -5,21 +5,21 @@
 
 ## 📋 **总览**
 
-|   参数   |                                                                                                     说明                                                                                                     |
-|:------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-|  核心板   |                                                                                              STM32G474RET6核心板                                                                                              |
-|  驱动板   |                                                                                              X-NUCLEO-IHM07M1                                                                                              |
-|  采样电阻  |                                                                                              330mOhm,双电阻采样方案                                                                                               |
-| 永磁同步电机 |                                                                          参数为额定电压12V,最大电流1A,Rs=2.75Ohm,Ls=1mH,flux=0.00386335(V·s)                                                                          |
-| SVPWM  | 使用HRTIM(STM32G474特有的高精度计时器)产生PWM<br>计时器频率:0.68Ghz(Master Timer) 1.36Ghz(Timer A,B,C)<br>period值:34000(合Master Timer或Timer ABC 0.68Ghz/34000=20khz)<br>PWM模式:中心对称(中间为高电平,两侧为低电平)<br>ADC触发时机:Master Timer更新时 |
-|  电流环   |                                                                                              PI控制(有抗饱和),20khz                                                                                              |
-|  转速环   |                                                                                      PI控制(有抗饱和),20khz(似乎有些过高,但是无所谓了)                                                                                       |
-|  观测器   |                                                                    EKF(20khz)或改进的磁链观测器(20khz)或滑膜观测器(20khz)<br>可在ADC1中断中更改变量Observer的值切换                                                                    | 
-|  EKF   |                                                                                      四维状态向量ialpha,ibeta,Espeed,Etheta                                                                                      |
-| 磁链观测器  |                                                    我们使用了PLL，并且参考了论文:《Performance Improvement of Nonlinear Flux Observer for Sensorless Control of PMSM》                                                    |
-|  SMO   |                                       滑膜观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s),需要使用IF启动,可以在ADC中断里修改IF启动各项参数<br>SMO的低通滤波需要相位补偿,仿真结果显示仍有小角度误差,等待下一版本修复                                       |
-| 与上位机通信 |                                                                                        USB通信，VOFA+(JustFloat协议)显示波形                                                                                        |
-|  软件版本  |                                  CLion 2025.3,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                   |
+|   参数   |                                                                                                        说明                                                                                                         |
+|:------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+|  核心板   |                                                                                                 STM32G474RET6核心板                                                                                                  |
+|  驱动板   |                                                                                                 X-NUCLEO-IHM07M1                                                                                                  |
+|  采样电阻  |                                                                                                  330mOhm,双电阻采样方案                                                                                                  |
+| 永磁同步电机 |                                                                             参数为额定电压12V,最大电流1A,Rs=2.75Ohm,Ls=1mH,flux=0.00386335(V·s)                                                                              |
+| SVPWM  | 使用HRTIM(STM32G474特有的高精度计时器)产生PWM<br>计时器频率:0.68Ghz(Master Timer) 1.36Ghz(Timer A,C,D)<br>period值:34000(合Master Timer或Timer ACD 0.68Ghz/34000=20khz)<br>PWM模式:中心对称(向上向下计数，中间为高电平,两侧为低电平)<br>ADC触发时机:Master Timer更新时 |
+|  电流环   |                                                                                                 PI控制(有抗饱和),20khz                                                                                                  |
+|  转速环   |                                                                                          PI控制(有抗饱和),20khz(似乎有些过高,但是无所谓了)                                                                                          |
+|  观测器   |                                                                       EKF(20khz)或改进的磁链观测器(20khz)或滑膜观测器(20khz)<br>可在ADC1中断中更改变量Observer的值切换                                                                        | 
+|  EKF   |                                                                                         四维状态向量ialpha,ibeta,Espeed,Etheta                                                                                          |
+| 磁链观测器  |                                                       我们使用了PLL，并且参考了论文:《Performance Improvement of Nonlinear Flux Observer for Sensorless Control of PMSM》                                                        |
+|  SMO   |                                          滑膜观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s),需要使用IF启动,可以在ADC中断里修改IF启动各项参数<br>SMO的低通滤波需要相位补偿,仿真结果显示仍有小角度误差,等待下一版本修复                                           |
+| 与上位机通信 |                                                                                           USB通信，VOFA+(JustFloat协议)显示波形                                                                                            |
+|  软件版本  |                                      CLion 2025.3,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                      |
 
 
 ## 🔌 **接线说明**
@@ -92,10 +92,6 @@ include("cmake/gcc-arm-none-eabi.cmake")
 ·在Documents文件夹里有关于观测器代码推导与实现的简略说明和解释(整个文档的公式由个人整理和推导,可能有错误,不一定和主流方案一致,文档只说明了如何使用理论公式推导出代码,而理论公式如何得到,文档并没有说明,请参考相关的书籍)
 
 ·使用CLion打开项目时，不要直接打开CMakeLists.txt或整个文件夹，否则会出现可以编译，但没有下载按钮的情况，可以像新建项目那样打开该项目，如下图所示：
-
-·新增keil项目迁移，现在可以使用keil打开该项目，点击下方链接即可获取:
-
-[访问keil项目](https://github.com/lxcy-tiger/FOC-Sensorless-EKF-STM32G474_keil)
 
 ![项目打开说明](images/项目打开说明.png)
 

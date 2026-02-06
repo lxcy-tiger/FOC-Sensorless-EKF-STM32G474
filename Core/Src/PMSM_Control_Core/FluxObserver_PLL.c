@@ -10,7 +10,15 @@
 static float flux_s[2]={0.f,0.f};//定子磁通预测值(V·s)
 static float flux_r[2]={0.f,0.f};//转子磁通预测值(V·s)
 static float flux_e=0.f;//转子磁通幅值(定值)
-static const float lambda=800.f;//增益
+/*
+ * 增益,仿真结果说明:太小时事实上就会使得磁链观测器事实上是无效的(甚至和lambda=0没有区别)
+ * 可以查看
+ * USB_data[USB_DataRecordIndex++]=fluxObserver_pll_est.Flux_alpha_O;
+ * 和USB_data[USB_DataRecordIndex++]=fluxObserver_pll_est.Flux_beta_O;
+ * 以alpha和beta的幅值对齐为妙(即alpha和beta的最大值和最小值都是相等的,而不是有一个偏置)
+ * 但是不要过度放大，否则float乘积会变成NAN
+ */
+static const float lambda=1.e9f;
 static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
 static const float k=1.f;//切向增益
@@ -55,7 +63,15 @@ static void PLL_update(struct FluxObserver_PLL_t*fluxObserver_pll) {
     Etheta+=Espeed*T_s;
     while (Etheta >= PI2) Etheta -= PI2;
     while (Etheta < 0.f) Etheta += PI2;
-    fluxObserver_pll->Espeed_O=Espeed;
+    static const uint8_t useLPF_Speed=1;//使用低通滤波得到更平滑的转速输出(500hz截止频率)
+    if (useLPF_Speed) {
+        fluxObserver_pll->Espeed_O=lowPass_filter_flux_Espeed(Espeed);
+    }
+    else {
+        fluxObserver_pll->Espeed_O=Espeed;
+    }
+
+
     fluxObserver_pll->Etheta_O=Etheta;
 }
 

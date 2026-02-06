@@ -19,6 +19,12 @@ static inline uint32_t clamp_u32(uint32_t input,uint32_t min,uint32_t max) {
     if (input > max)return max;
     return input;
 }
+//对float数值进行限幅
+static inline float clamp_float(float input,float min,float max) {
+    if (input < min)return min;
+    if (input > max)return max;
+    return input;
+}
 /*
  * median_3和median_filter_3构成中值滤波器(3个最近值)函数
  */
@@ -104,7 +110,7 @@ static inline float sat(float input,const float minx,const float maxx,const floa
     return (maxy-miny)/(maxx-minx)*(input-minx)+miny;
 }
 
-//SMO的IIR滤波器(已弃用，而是改为简单的低通滤波器)
+//SMO的IIR滤波器(已弃用，改为简单的低通滤波器)
 float __attribute__((unused)) IIR_filter2Ealpha(float input);
 float __attribute__((unused)) IIR_filter2Ebeta(float input);
 float __attribute__((unused)) IIR_filter2SMO_Speed(float input);
@@ -117,9 +123,20 @@ float __attribute__((unused)) IIR_filter2SMO_Speed(float input);
     y_old=k*NAME##_input+(1-k)*y_old;\
     return y_old;\
     }
+
+GenerateFunction_LowPassFilter(flux_Espeed,500)
+
 //SMO的反电动势进行低通滤波的一阶滤波器的截止频率(hz)
 #define SMO_E_lowPass_Fc 500
 GenerateFunction_LowPassFilter(SMO_Ealpha,SMO_E_lowPass_Fc)
 GenerateFunction_LowPassFilter(SMO_Ebeta,SMO_E_lowPass_Fc)
-GenerateFunction_LowPassFilter(SMO_Espeed,50)
-#endif //FOC_SENSORLESS_OTHER_H
+GenerateFunction_LowPassFilter(SMO_Espeed,20)
+
+//ST-SMO的反电动势进行低通滤波的一阶滤波器的截止频率(hz)
+#define ST_SMO_E_lowPass_Fc 2000
+GenerateFunction_LowPassFilter(ST_SMO_Ealpha,ST_SMO_E_lowPass_Fc)
+GenerateFunction_LowPassFilter(ST_SMO_Ebeta,ST_SMO_E_lowPass_Fc)
+GenerateFunction_LowPassFilter(ST_SMO_Espeed,20)
+
+
+#endif //FOC_SENSORLESS_OTHER_H/
