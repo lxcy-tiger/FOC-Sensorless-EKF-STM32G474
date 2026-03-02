@@ -261,7 +261,7 @@ void ADC1_2_IRQHandler(void)
   ClarkePark.clarke.Ic_I=Ic;
   Clarke_transform(&ClarkePark.clarke);
 
-  const int Observer=3;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL,3表示使用ST-SMO_PLL
+  const int Observer=0;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL,3表示使用ST-SMO_PLL
   float Espeed=0;
   float Etheta=0;
   /*
@@ -433,10 +433,18 @@ void ADC1_2_IRQHandler(void)
     }
   }
   /*
-   * 执行一次转速环，获取Q电流环给定
+   * 每隔20次执行一次转速环(即20khz/20=1khz)，获取Q电流环给定(这里顺便给速度做20次平均)
    */
-  Speed_PIstate.Measure=Espeed;
-  if (isSkipSpeed==0)Speed_PI_update(&Speed_PIstate);
+  static int Speed_RunCount=0;
+  static float Espeed_AddUp=0.0f;
+  Speed_RunCount++;
+  Espeed_AddUp+=Espeed;
+  if (Speed_RunCount>=20) {
+    Speed_PIstate.Measure=Espeed_AddUp/Speed_RunCount;
+    if (isSkipSpeed==0)Speed_PI_update(&Speed_PIstate);
+    Speed_RunCount=0;
+    Espeed_AddUp=0.0f;
+  }
 
   /*
    * 执行一次Park，获取dq电流
@@ -456,10 +464,20 @@ void ADC1_2_IRQHandler(void)
   Iq_PI_update(&Iq_PIstate);
 
   /*
+  * dq电流解耦与反电动势前馈
+  * 根据公式：
+  * ud=Rsid+Ld(did/dt)-weLqiq
+  * uq=Rsiq+Lq(diq/dt)+we(Ldid+flux)
+  * 可知这里得到的dq电流环输出ud,uq，并不能准确反映id或者iq的大小,通常这里可以减去耦合项we*xxx
+  */
+  const float ud_decoupling=-Espeed*Ls*Iq_PIstate.Measure;
+  const float uq_decoupling=Espeed*(Ls*Id_PIstate.Measure+flux);
+
+  /*
    * 执行一次反park，获取Ualpha和Ubeta
    */
-  ClarkePark.ipark.Vd_I=Id_PIstate.Output;
-  ClarkePark.ipark.Vq_I=Iq_PIstate.Output;
+  ClarkePark.ipark.Vd_I=Id_PIstate.Output+ud_decoupling;
+  ClarkePark.ipark.Vq_I=Iq_PIstate.Output+uq_decoupling;
   ClarkePark.ipark.Theta_I=Etheta;
   IPark_transform(&ClarkePark.ipark);
 

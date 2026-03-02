@@ -18,7 +18,7 @@ void recordRunningData() {
     USB_data[USB_DataRecordIndex++]=Id_PIstate.Set;
     USB_data[USB_DataRecordIndex++]=Id_PIstate.Measure;
     USB_data[USB_DataRecordIndex++]=Speed_PIstate.Set;
-    USB_data[USB_DataRecordIndex++]=Speed_PIstate.Measure;
+    USB_data[USB_DataRecordIndex++]=ekf_est.Espeed_O;
     USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Theta_I;
     USB_data[USB_DataRecordIndex++]=*((float*)&tail[0]);
     if (USB_DataRecordIndex==USB_HalfDataLength) {

@@ -33,7 +33,7 @@ void SVPWM_Calculate_Set(float Valpha, float Vbeta) {
     N += B > 0 ? 2 : 0;
     N += C > 0 ? 4 : 0;
     const uint8_t Sector = Sector_Table[N];
-    const float sq3_Ts_divUdc = Sqrt_3 * Ts / Udc;
+    const float sq3_Ts_divUdc = Sqrt_3 * Ts * DivUdc;
     const float X = sq3_Ts_divUdc * A, Y = -sq3_Ts_divUdc * C, Z = -sq3_Ts_divUdc * B;
     float Tx, Ty;
     switch (Sector) {
@@ -66,8 +66,7 @@ void SVPWM_Calculate_Set(float Valpha, float Vbeta) {
             Ty = 0;
             break;
     }
-    //-O2会优化的(浮点乘法)
-    uint32_t small = (Ts - Tx - Ty) / 4, medium = (Ts + Tx - Ty) / 4, big = (Ts + Tx + Ty) / 4;
+    uint32_t small = (Ts - Tx - Ty) * (1.0 / 4), medium = (Ts + Tx - Ty) * (1.0 / 4), big = (Ts + Tx + Ty) * (1.0 / 4);
     small = clamp_u32(small, CompareMin, HRTIM_Period - CompareMin);
     medium = clamp_u32(medium, CompareMin, HRTIM_Period - CompareMin);
     big = clamp_u32(big, CompareMin, HRTIM_Period - CompareMin);

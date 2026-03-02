@@ -39,10 +39,10 @@ typedef struct PI_Controller_t {
     } \
     extern struct PI_Controller_t NAME##_PIstate;
 
-GenerateFunction_PIController(Id,10.f,0.01f,6.5f,-6.5f)
-GenerateFunction_PIController(Iq,10.f,0.01f,6.5f,-6.5f)
-#define Speed_I_Ts_VAL 0.00001f
-GenerateFunction_PIController(Speed,0.005f,Speed_I_Ts_VAL,1.0f,-1.0f)
+GenerateFunction_PIController(Id,9.816f,1.975f,6.5f,-6.5f)
+GenerateFunction_PIController(Iq,9.816f,1.975f,6.5f,-6.5f)
+#define Speed_I_Ts_VAL 0.00005f
+GenerateFunction_PIController(Speed,0.001f, Speed_I_Ts_VAL,1.0f,-1.0f)
 
 //使用宏定义生成代码(没有设定值与测量值，只有误差值作为输入):
 //(NAME函数名称,P_VAL比例参数,I_Ts_VAL积分参数(I*Ts类型),MAX_VAL输出最大值,MIN_VAL输出最小值)
