@@ -32,10 +32,10 @@ static void SMO_update(struct SMO_PLL_t*smo_pll) {
     ibeta_est=ibeta_est+T_s*(1/Ls*ubeta-Rs/Ls*ibeta_est-1/Ls*Ebeta_smo);
 
 
-    smo_pll->E_alpha_O=lowPass_filter_SMO_Ealpha(Ealpha_smo);//高频开关项必须要经过低通滤波才能得到准确的反电动势项(500hz截止频率)
-    smo_pll->E_beta_O=lowPass_filter_SMO_Ebeta(Ebeta_smo);//高频开关项必须要经过低通滤波才能得到准确的反电动势项(500hz截止频率)
-    //smo_pll->E_alpha_O=IIR_filter2Ealpha(Ealpha_smo);//高频开关项必须要经过低通滤波才能得到准确的反电动势项(500hz截止频率)
-    //smo_pll->E_beta_O=IIR_filter2Ebeta(Ebeta_smo);//高频开关项必须要经过低通滤波才能得到准确的反电动势项(500hz截止频率)
+    smo_pll->E_alpha_O=lowPass_filter_SMO_Ealpha(Ealpha_smo);//高频开关项必须要经过低通滤波才能得到准确的反电动势项
+    smo_pll->E_beta_O=lowPass_filter_SMO_Ebeta(Ebeta_smo);//高频开关项必须要经过低通滤波才能得到准确的反电动势项
+    //smo_pll->E_alpha_O=IIR_filter2Ealpha(Ealpha_smo);//高频开关项必须要经过低通滤波才能得到准确的反电动势项
+    //smo_pll->E_beta_O=IIR_filter2Ebeta(Ebeta_smo);//高频开关项必须要经过低通滤波才能得到准确的反电动势项
 }
 
 static void PLL_update(struct SMO_PLL_t*smo_pll) {
@@ -47,7 +47,7 @@ static void PLL_update(struct SMO_PLL_t*smo_pll) {
     SMO_PLLSpeed_PI_update(&SMO_PLLSpeed_PIstate);
     Espeed=SMO_PLLSpeed_PIstate.Output;
 
-    static const uint8_t useLPF_Speed=1;//使用低通滤波得到更平滑的转速输出(500hz截止频率)
+    static const uint8_t useLPF_Speed=1;//使用低通滤波得到更平滑的转速输出
     if (useLPF_Speed) {
         smo_pll->Espeed_O=lowPass_filter_SMO_Espeed(Espeed);
         //smo_pll->Espeed_O=IIR_filter2SMO_Speed(Espeed);
@@ -68,5 +68,5 @@ static void PLL_update(struct SMO_PLL_t*smo_pll) {
 
 void SMO_PLL_update(struct SMO_PLL_t*smo_pll) {
     SMO_update(smo_pll);
-    if (smo_pll_est.E_alpha_O*smo_pll_est.E_alpha_O+smo_pll_est.E_beta_O*smo_pll_est.E_beta_O>1.0f) PLL_update(smo_pll);
+    PLL_update(smo_pll);
 }

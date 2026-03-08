@@ -15,12 +15,12 @@ unsigned char tail[4]={0x00,0x00,0x80,0x7f};
 //记录电机运行和系统状态，用于发送给上位机
 void recordRunningData() {
     USB_data[USB_DataRecordIndex++]=fluxObserver_pll_est.Etheta_O;
-    USB_data[USB_DataRecordIndex++]=smo_pll_est.Etheta_O;
-    USB_data[USB_DataRecordIndex++]=smo_pll_est.E_alpha_O;
-    USB_data[USB_DataRecordIndex++]=smo_pll_est.E_beta_O;
+    USB_data[USB_DataRecordIndex++]=st_smo_pll_est.Etheta_O;
+    USB_data[USB_DataRecordIndex++]=st_smo_pll_est.E_alpha_O;
+    USB_data[USB_DataRecordIndex++]=st_smo_pll_est.E_beta_O;
     USB_data[USB_DataRecordIndex++]=Speed_PIstate.Set;
     USB_data[USB_DataRecordIndex++]=fluxObserver_pll_est.Espeed_O;
-    USB_data[USB_DataRecordIndex++]=smo_pll_est.Espeed_O;
+    USB_data[USB_DataRecordIndex++]=st_smo_pll_est.Espeed_O;
     USB_data[USB_DataRecordIndex++]=*((float*)&tail[0]);
     if (USB_DataRecordIndex==USB_HalfDataLength) {
         CDC_Transmit_FS((uint8_t*)USB_data,USB_HalfDataLength*4);
