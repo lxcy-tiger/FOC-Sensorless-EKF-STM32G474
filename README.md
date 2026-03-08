@@ -42,7 +42,7 @@
 
 4.采样电路不同（即不使用配套的评估板而是你自己的板子），请修改PMSM_Control_Core/Hardware.c里的IA_K和IB_K参数，这里的参数表示每安电流对应ADC采样端多少伏的电压，此外，上电时，会进行一次VCC_3V3，IA_REF，IB_REF离线校正，因此事实上这三个参数并不需要特意修改
 
-5.在不同的硬件上运行时，如果电机不能运行或者运行一会就停止，请调整一下PI参数，修改PMSM_Control_Core/PI_Controller.h里的GenerateFunction_PIController各项参数，修改PMSM_Control_Core/EKF.c里面的Q，R矩阵(或其它观测器的参数)
+5.在不同的硬件上运行时，如果电机不能运行或者运行一会就停止，请调整一下PI参数，修改PMSM_Control_Core/PI_Controller.h里的GenerateFunction_PIController各项参数(可以参考一下文档,整定电流环和转速环)，修改PMSM_Control_Core/EKF.c里面的Q，R矩阵(或其它观测器的参数)
 
 ## 📈 **运行以及波形查看**
 
