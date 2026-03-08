@@ -119,7 +119,7 @@ float __attribute__((unused)) IIR_filter2SMO_Speed(float input);
 #define GenerateFunction_LowPassFilter(NAME,f_c) \
     static float lowPass_filter_##NAME(float NAME##_input){\
     static float y_old=0;\
-    const float k=2*PI2*T_s*f_c;\
+    const float k= PI2*T_s*f_c;\
     y_old=k*NAME##_input+(1-k)*y_old;\
     return y_old;\
     }
@@ -127,10 +127,10 @@ float __attribute__((unused)) IIR_filter2SMO_Speed(float input);
 GenerateFunction_LowPassFilter(flux_Espeed,500)
 
 //SMO的反电动势进行低通滤波的一阶滤波器的截止频率(hz)
-#define SMO_E_lowPass_Fc 500
+#define SMO_E_lowPass_Fc 250
 GenerateFunction_LowPassFilter(SMO_Ealpha,SMO_E_lowPass_Fc)
 GenerateFunction_LowPassFilter(SMO_Ebeta,SMO_E_lowPass_Fc)
-GenerateFunction_LowPassFilter(SMO_Espeed,20)
+GenerateFunction_LowPassFilter(SMO_Espeed,15)
 
 //ST-SMO的反电动势进行低通滤波的一阶滤波器的截止频率(hz)
 #define ST_SMO_E_lowPass_Fc 2000
@@ -138,5 +138,10 @@ GenerateFunction_LowPassFilter(ST_SMO_Ealpha,ST_SMO_E_lowPass_Fc)
 GenerateFunction_LowPassFilter(ST_SMO_Ebeta,ST_SMO_E_lowPass_Fc)
 GenerateFunction_LowPassFilter(ST_SMO_Espeed,20)
 
+GenerateFunction_LowPassFilter(Ia,2000)
+GenerateFunction_LowPassFilter(Ib,2000)
+
+GenerateFunction_LowPassFilter(Id,3000)
+GenerateFunction_LowPassFilter(Iq,3000)
 
 #endif //FOC_SENSORLESS_OTHER_H/

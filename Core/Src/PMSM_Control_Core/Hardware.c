@@ -20,16 +20,23 @@ void Offline_IabVcc_Adjust() {
     uint32_t IarefAddUp=0;
     uint32_t IbrefAddUp=0;
     uint32_t VrefAddUp=0;
-    uint16_t ADCres[3];
+    uint16_t ADCres[2];
     static const uint16_t Repeat=10000;
     //12位的数据，乘以16位计数，小于32位的数据(4095*10000<U32_MAX)
     for (uint16_t i=0;i<Repeat;i++) {
-        HAL_ADC_Start_DMA(&hadc1,(uint32_t*)ADCres,3);
+        HAL_ADC_Start_DMA(&hadc1,(uint32_t*)ADCres,2);
+        HAL_ADC_Start(&hadc2);
         while (HAL_DMA_GetState(hadc1.DMA_Handle) == HAL_DMA_STATE_BUSY);
         HAL_ADC_Stop_DMA(&hadc1);
+        // 等待ADC2转换完成 (设置超时时间，例如10ms)
+        HAL_ADC_PollForConversion(&hadc2, 10);
+
         IarefAddUp+=ADCres[0];
-        IbrefAddUp+=ADCres[1];
-        VrefAddUp+=ADCres[2];
+        VrefAddUp+=ADCres[1];
+        // 读取ADC2的值并累加
+        IbrefAddUp += HAL_ADC_GetValue(&hadc2);
+        // 停止ADC2，为下一次循环的Start做准备
+        HAL_ADC_Stop(&hadc2);
     }
     IA_REF=IarefAddUp/Repeat;
     IB_REF=IbrefAddUp/Repeat;

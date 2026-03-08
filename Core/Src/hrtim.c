@@ -60,7 +60,7 @@ void MX_HRTIM1_Init(void)
     Error_Handler();
   }
   pADCTriggerCfg.UpdateSource = HRTIM_ADCTRIGGERUPDATE_MASTER;
-  pADCTriggerCfg.Trigger = HRTIM_ADCTRIGGEREVENT24_MASTER_PERIOD;
+  pADCTriggerCfg.Trigger = HRTIM_ADCTRIGGEREVENT24_MASTER_PERIOD|HRTIM_ADCTRIGGEREVENT24_MASTER_PERIOD;
   if (HAL_HRTIM_ADCTriggerConfig(&hhrtim1, HRTIM_ADCTRIGGER_4, &pADCTriggerCfg) != HAL_OK)
   {
     Error_Handler();

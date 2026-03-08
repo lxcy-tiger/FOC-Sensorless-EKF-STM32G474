@@ -5,7 +5,7 @@
 #include "PMSM_Control_Core/PMSM_Parameter.h"
 static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
-static const float k=5.f;//增益
+static const float k=3.f;//增益
 static float Ealpha_smo=0.f; //SMO的Ealpha开关项(k乘以sgn或sat函数)
 static float Ebeta_smo=0.f;//SMO的Ebeta开关项(k乘以sgn或sat函数)
 static float ialpha_est=0.f;//SMO预估ialpha
@@ -20,7 +20,7 @@ static void SMO_update(struct SMO_PLL_t*smo_pll) {
 
     static const uint8_t useSat=1;//使用饱和函数替代符号函数
     if (useSat) {
-        static const float maxErr=0.4f;
+        static const float maxErr=0.1f;
         Ealpha_smo=k*sat(ialpha_est-ialpha,-maxErr,maxErr,-1,1);
         Ebeta_smo=k*sat(ibeta_est-ibeta,-maxErr,maxErr,-1,1);
     }else {
@@ -43,9 +43,9 @@ static void PLL_update(struct SMO_PLL_t*smo_pll) {
     static const float RAD_TO_DEG = 180.0f / PI;
     arm_sin_cos_f32(Etheta * RAD_TO_DEG, &s_theta, &c_theta);
     const float err=-smo_pll->E_alpha_O*c_theta-smo_pll->E_beta_O*s_theta;
-    SMO_Speed_PIstate.error=err;
-    SMO_Speed_PI_update(&SMO_Speed_PIstate);
-    Espeed=SMO_Speed_PIstate.Output;
+    SMO_PLLSpeed_PIstate.error = Speed_PIstate.Set > 0 ? err:-err;
+    SMO_PLLSpeed_PI_update(&SMO_PLLSpeed_PIstate);
+    Espeed=SMO_PLLSpeed_PIstate.Output;
 
     static const uint8_t useLPF_Speed=1;//使用低通滤波得到更平滑的转速输出(500hz截止频率)
     if (useLPF_Speed) {
@@ -68,5 +68,5 @@ static void PLL_update(struct SMO_PLL_t*smo_pll) {
 
 void SMO_PLL_update(struct SMO_PLL_t*smo_pll) {
     SMO_update(smo_pll);
-    PLL_update(smo_pll);
+    if (smo_pll_est.E_alpha_O*smo_pll_est.E_alpha_O+smo_pll_est.E_beta_O*smo_pll_est.E_beta_O>1.0f) PLL_update(smo_pll);
 }

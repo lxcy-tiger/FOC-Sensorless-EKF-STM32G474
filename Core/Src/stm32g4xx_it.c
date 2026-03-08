@@ -67,6 +67,7 @@ uint8_t IF_startStep=1;//3步骤启动
 extern PCD_HandleTypeDef hpcd_USB_FS;
 extern DMA_HandleTypeDef hdma_adc1;
 extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -231,14 +232,34 @@ void ADC1_2_IRQHandler(void)
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
   //SMO的强拖启动一阶段需要给电流环固定给定，不需要转速环，跳过更新
   static uint8_t isSkipSpeed=0;
+  static volatile uint8_t adc1_done = 0;
+  static volatile uint8_t adc2_done = 0;
+  if (__HAL_ADC_GET_FLAG(&hadc1, ADC_FLAG_JEOS))
+  {
+    __HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_JEOS);
+    adc1_done = 1;
+  }
+  if (__HAL_ADC_GET_FLAG(&hadc2, ADC_FLAG_JEOS))
+  {
+    __HAL_ADC_CLEAR_FLAG(&hadc2, ADC_FLAG_JEOS);
+    adc2_done = 1;
+  }
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
+  HAL_ADC_IRQHandler(&hadc2);
   /* USER CODE BEGIN ADC1_2_IRQn 1 */
+  //HRTIM每次更新时同时触发ADC1,ADC2采样Ia,Ib,因此此中断一个周期触发两次，必须要等两路电流都采集完,才进行控制
+  if (adc1_done && adc2_done)
+  {
+    adc1_done = 0;
+    adc2_done = 0;
+  }
+  else return;
   /*
    *获取ABC相电流
    */
   const uint32_t va_source=HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-  const uint32_t vb_source=HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_2);
+  const uint32_t vb_source=HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
   //必须显式强转有符号整数，否则结果会被隐式转化为无符号整数
   const float Ia_raw=(IA_REF-(int32_t)va_source)*VCC_3V3/IA_K/4095.f;
   const float Ib_raw=(IB_REF-(int32_t)vb_source)*VCC_3V3/IB_K/4095.f;
@@ -251,6 +272,8 @@ void ADC1_2_IRQHandler(void)
   //const float Ib=IIR_filter2B(Ib_median);
   //const float Ia = Ia_raw;
   //const float Ib = Ib_raw;
+  //const float Ia =lowPass_filter_Ia(Ia_raw);
+  //const float Ib =lowPass_filter_Ib(Ib_raw);
   const float Ic=-(Ia+Ib);
 
   /*
@@ -261,7 +284,7 @@ void ADC1_2_IRQHandler(void)
   ClarkePark.clarke.Ic_I=Ic;
   Clarke_transform(&ClarkePark.clarke);
 
-  const int Observer=0;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL,3表示使用ST-SMO_PLL
+  const int Observer=2;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL,3表示使用ST-SMO_PLL
   float Espeed=0;
   float Etheta=0;
   /*
@@ -316,49 +339,17 @@ void ADC1_2_IRQHandler(void)
     smo_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
     smo_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
     SMO_PLL_update(&smo_pll_est);
-    static float IF_speed=0.0f;//IF启动速度
-    static float IF_theta=0.0f;//IF启动角度
-    static const float IF_speedAccelerate=0.005f;//IF启动加速度
-    static const float IF_StartCurrent=0.6f;//IF启动电流
-    static float SMO_thetaRecord=0;//记录切换时的SMO角度值(1切到2)
-    if (IF_startStep==1) {
-      IF_speed+=IF_speedAccelerate;
-      IF_theta+=IF_speed*T_s;
-      while (IF_theta>=PI2)IF_theta-=PI2;
-      while (IF_theta<0)IF_theta+=PI2;
-      Espeed=IF_speed;
-      Etheta=IF_theta;
-      Speed_PIstate.Output=IF_StartCurrent;//这里把转速环的输出改为我们的IF启动电流
-      isSkipSpeed=1;//不要更新转速环，否则Speed_PIstate.Output会被覆盖
-      if (IF_speed>=Speed_PIstate.Set) {
-        IF_startStep=2;
-        isSkipSpeed=0;
-        SMO_thetaRecord=smo_pll_est.Etheta_O;
-        //这里把Iq_PIstate.Set(其实就是IF_StartCurrent)全部变成转速环的积分项(以保证切换时转速环的输出不会突变)
-        //强拖时SMO的预测非常准确，所以转速误差项(设定speed-SMO的speed)非常小，转速环比例项基本为0，基本是积分项AddUp*Speed_I_Ts_VAL=Output
-        //随后就靠转速环自动调节了
-        Speed_PIstate.AddUp=Iq_PIstate.Set/Speed_I_Ts_VAL;
-      }
-    }
-    else if (IF_startStep==2) {
-      static const int32_t Smooth_ThetaTotalCounts=40000;//平滑角度切换到smo闭环
-      static int32_t Smooth_ThetaCounts=0;//平滑角度切换到smo闭环
-      IF_theta+=smo_pll_est.Espeed_O*T_s;
-      SMO_thetaRecord+=smo_pll_est.Espeed_O*T_s;
-      //前面不需要将它弄到0~2pi范围
-      Etheta=(IF_theta*(Smooth_ThetaTotalCounts-Smooth_ThetaCounts)
-        +SMO_thetaRecord*Smooth_ThetaCounts)/Smooth_ThetaTotalCounts;
-      Espeed=smo_pll_est.Espeed_O;
-      while (Etheta>=PI2)Etheta-=PI2;
-      while (Etheta<0)Etheta+=PI2;
-      if (Smooth_ThetaCounts>=Smooth_ThetaTotalCounts && my_abs(smo_pll_est.Espeed_O-Speed_PIstate.Set)<20) {
-        IF_startStep=3;
-      }
-      if (Smooth_ThetaCounts<Smooth_ThetaTotalCounts)Smooth_ThetaCounts++;
-    }
-    else {
-      Espeed=smo_pll_est.Espeed_O;
-      Etheta=smo_pll_est.Etheta_O;
+    Espeed=smo_pll_est.Espeed_O;
+    Etheta=smo_pll_est.Etheta_O;
+    static int StartCount=0;
+    fluxObserver_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
+    fluxObserver_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
+    fluxObserver_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
+    fluxObserver_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
+    FluxObserver_PLL_update(&fluxObserver_pll_est);
+    if (StartCount++<400000) {
+      Espeed=fluxObserver_pll_est.Espeed_O;
+      Etheta=fluxObserver_pll_est.Etheta_O;
     }
   }
   else {
@@ -433,17 +424,14 @@ void ADC1_2_IRQHandler(void)
     }
   }
   /*
-   * 每隔20次执行一次转速环(即20khz/20=1khz)，获取Q电流环给定(这里顺便给速度做20次平均)
+   * 每隔10次执行一次转速环(即20khz/10=2khz)，获取Q电流环给定
    */
   static int Speed_RunCount=0;
-  static float Espeed_AddUp=0.0f;
   Speed_RunCount++;
-  Espeed_AddUp+=Espeed;
-  if (Speed_RunCount>=20) {
-    Speed_PIstate.Measure=Espeed_AddUp/Speed_RunCount;
+  if (Speed_RunCount>=10) {
+    Speed_PIstate.Measure=Espeed;
     if (isSkipSpeed==0)Speed_PI_update(&Speed_PIstate);
     Speed_RunCount=0;
-    Espeed_AddUp=0.0f;
   }
 
   /*
@@ -455,12 +443,17 @@ void ADC1_2_IRQHandler(void)
   Park_transform(&ClarkePark.park);
 
   /*
+   * 低通滤波滤除id,iq高频分量
+   */
+  float id_lowpass = lowPass_filter_Id(ClarkePark.park.Id_O);
+  float iq_lowpass = lowPass_filter_Iq(ClarkePark.park.Iq_O);
+  /*
    * 执行一次dq电流环，获取Udq电压给定
    */
-  Id_PIstate.Measure=ClarkePark.park.Id_O;
+  Id_PIstate.Measure=id_lowpass;
   Id_PI_update(&Id_PIstate);
   Iq_PIstate.Set=Speed_PIstate.Output;
-  Iq_PIstate.Measure=ClarkePark.park.Iq_O;
+  Iq_PIstate.Measure=iq_lowpass;
   Iq_PI_update(&Iq_PIstate);
 
   /*

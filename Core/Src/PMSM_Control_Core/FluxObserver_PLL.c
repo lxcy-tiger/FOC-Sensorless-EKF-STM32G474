@@ -18,7 +18,7 @@ static float flux_e=0.f;//转子磁通幅值(定值)
  * 以alpha和beta的幅值对齐为妙(即alpha和beta的最大值和最小值都是相等的,而不是有一个偏置)
  * 但是不要过度放大，否则float乘积会变成NAN
  */
-static const float lambda=1.e9f;
+static const float lambda=1.e8f;
 static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
 static const float k=1.f;//切向增益
@@ -36,15 +36,16 @@ static void FluxObserver_update(struct FluxObserver_PLL_t*fluxObserver_pll) {
     flux_r[0]=flux_s[0]-Ls*ialpha;
     flux_r[1]=flux_s[1]-Ls*ibeta;
 
+    const float k_sign=Speed_PIstate.Set>0?k*1.f:k*-1.f;//给定负转速时，必须要将k取相反数，否则导致磁链观测器无法收敛
     flux_s[0]=T_s*(
         ualpha-Rs*ialpha+
-            lambda/2*(flux_r[0]-k*flux_r[1])
+            lambda/2*(flux_r[0]-k_sign*flux_r[1])
             *(flux_e*flux_e-flux_r[0]*flux_r[0]-flux_r[1]*flux_r[1])
         )
         +flux_s[0];
     flux_s[1]=T_s*(
         ubeta-Rs*ibeta+
-            lambda/2*(flux_r[1]+k*flux_r[0])
+            lambda/2*(flux_r[1]+k_sign*flux_r[0])
             *(flux_e*flux_e-flux_r[0]*flux_r[0]-flux_r[1]*flux_r[1])
         )
         +flux_s[1];
@@ -57,9 +58,9 @@ static void PLL_update(struct FluxObserver_PLL_t*fluxObserver_pll) {
     static const float RAD_TO_DEG = 180.0f / PI;
     arm_sin_cos_f32(Etheta * RAD_TO_DEG, &s_theta, &c_theta);
     const float err=fluxObserver_pll->Flux_beta_O*c_theta-fluxObserver_pll->Flux_alpha_O*s_theta;
-    FluxObserver_Speed_PIstate.error=err;
-    FluxObserver_Speed_PI_update(&FluxObserver_Speed_PIstate);
-    Espeed=FluxObserver_Speed_PIstate.Output;
+    FluxObserver_PLLSpeed_PIstate.error=err;
+    FluxObserver_PLLSpeed_PI_update(&FluxObserver_PLLSpeed_PIstate);
+    Espeed=FluxObserver_PLLSpeed_PIstate.Output;
     Etheta+=Espeed*T_s;
     while (Etheta >= PI2) Etheta -= PI2;
     while (Etheta < 0.f) Etheta += PI2;

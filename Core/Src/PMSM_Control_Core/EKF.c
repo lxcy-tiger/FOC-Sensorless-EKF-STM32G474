@@ -6,8 +6,8 @@
 static float TsDivLs;//数值上等于T_s/Ls，用于加速计算过程
 static float x_k_k_prev[4]; //先验估计
 float x_k_k[4]; //后验估计
-static const float Q_0_0=0.05f,Q_1_1=0.05f,Q_2_2=100.f,Q_3_3=0.001f; //过程噪声方差矩阵
-static const float R_0_0=0.1f,R_1_1=0.1f; //测量噪声方差矩阵
+static const float Q_0_0=0.01f,Q_1_1=0.01f,Q_2_2=100.f,Q_3_3=0.0001f; //过程噪声方差矩阵
+static const float R_0_0=0.0167f,R_1_1=0.0167f; //测量噪声方差矩阵
 static float P_k_k_prev_0_0,P_k_k_prev_0_1,P_k_k_prev_0_2,P_k_k_prev_0_3,
         P_k_k_prev_1_1,P_k_k_prev_1_2,P_k_k_prev_1_3,
         P_k_k_prev_2_2,P_k_k_prev_2_3

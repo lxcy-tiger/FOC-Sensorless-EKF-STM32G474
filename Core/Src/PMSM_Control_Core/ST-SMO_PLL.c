@@ -77,13 +77,13 @@ static void PLL_update(struct ST_SMO_PLL_t*st_smo_pll) {
     const float err=-st_smo_pll->E_alpha_O*c_theta-st_smo_pll->E_beta_O*s_theta;
     //大转速E大误差大，小转速E小误差小，所以同时除以幅值，现在大小转速的误差都差不多了
     if (E_amplitude > 1.f) {
-        ST_SMO_Speed_PIstate.error=err/E_amplitude;
+        ST_SMO_PLLSpeed_PIstate.error=err/E_amplitude;
     }
     else {
-        ST_SMO_Speed_PIstate.error=err/1.01f;
+        ST_SMO_PLLSpeed_PIstate.error=err/1.01f;
     }
-    ST_SMO_Speed_PI_update(&ST_SMO_Speed_PIstate);
-    Espeed=ST_SMO_Speed_PIstate.Output;
+    ST_SMO_PLLSpeed_PI_update(&ST_SMO_PLLSpeed_PIstate);
+    Espeed=ST_SMO_PLLSpeed_PIstate.Output;
 
     static const uint8_t useLPF_Speed=1;//使用低通滤波得到更平滑的转速输出
     if (useLPF_Speed) {

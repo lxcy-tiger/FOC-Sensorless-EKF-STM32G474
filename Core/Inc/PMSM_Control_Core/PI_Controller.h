@@ -16,11 +16,12 @@ typedef struct PI_Controller_t {
 };
 
 //使用宏定义生成代码:
-//(NAME函数名称,P_VAL比例参数,I_Ts_VAL积分参数(I*Ts类型),MAX_VAL输出最大值,MIN_VAL输出最小值)
-#define GenerateFunction_PIController(NAME, P_VAL, I_Ts_VAL, MAX_VAL, MIN_VAL) \
+//(NAME函数名称,P_VAL比例参数,I_Ts_VAL积分参数(I*Ts类型),
+//   MAX_VAL输出最大值,MIN_VAL输出最小值,CalculateError,为1时计算error=Set-Measure,为0时error由用户给定)
+#define GenerateFunction_PIController(NAME, P_VAL, I_Ts_VAL, MAX_VAL, MIN_VAL, CalculateError) \
     static inline void NAME##_PI_update(struct PI_Controller_t* NAME){ \
-        NAME->error = NAME->Set - NAME->Measure; \
-        float output_unsat = P_VAL * NAME->error + I_Ts_VAL * NAME->AddUp; \
+        if(CalculateError)NAME->error = NAME->Set - NAME->Measure; \
+        float output_unsat = (float)P_VAL * NAME->error + (float)I_Ts_VAL * NAME->AddUp; \
         float output; \
         bool saturated = false; \
         if (output_unsat > MAX_VAL) { \
@@ -39,39 +40,17 @@ typedef struct PI_Controller_t {
     } \
     extern struct PI_Controller_t NAME##_PIstate;
 
-GenerateFunction_PIController(Id,9.816f,1.975f,6.5f,-6.5f)
-GenerateFunction_PIController(Iq,9.816f,1.975f,6.5f,-6.5f)
-#define Speed_I_Ts_VAL 0.00005f
-GenerateFunction_PIController(Speed,0.001f, Speed_I_Ts_VAL,1.0f,-1.0f)
+GenerateFunction_PIController(Id,12.566f,1.727825f,6.5f,-6.5f,1)
+GenerateFunction_PIController(Iq,12.566f,1.727825f,6.5f,-6.5f,1)
+#define Speed_I_Ts_VAL 4.27e-6f
+GenerateFunction_PIController(Speed,0.008712368f, Speed_I_Ts_VAL,1.0f,-1.0f,1)
 
-//使用宏定义生成代码(没有设定值与测量值，只有误差值作为输入):
-//(NAME函数名称,P_VAL比例参数,I_Ts_VAL积分参数(I*Ts类型),MAX_VAL输出最大值,MIN_VAL输出最小值)
-#define GenerateFunction_OnlyError_PIController(NAME, P_VAL, I_Ts_VAL, MAX_VAL, MIN_VAL) \
-    static inline void NAME##_PI_update(struct PI_Controller_t* NAME){ \
-        float output_unsat = P_VAL * NAME->error + I_Ts_VAL * NAME->AddUp; \
-        float output; \
-        bool saturated = false; \
-        if (output_unsat > MAX_VAL) { \
-            output = MAX_VAL; \
-            saturated = true; \
-        } else if (output_unsat < MIN_VAL) { \
-            output = MIN_VAL; \
-            saturated = true; \
-        } else { \
-            output = output_unsat; \
-        } \
-        if (!saturated) { \
-            NAME->AddUp += NAME->error; \
-        } \
-        NAME->Output = output; \
-    } \
-    extern struct PI_Controller_t NAME##_PIstate;
 
-GenerateFunction_OnlyError_PIController(FluxObserver_Speed,200000,10000,3000,-3000)
+GenerateFunction_PIController(FluxObserver_PLLSpeed,80435.9f,312.45f,3000,-3000,0)
 
-GenerateFunction_OnlyError_PIController(SMO_Speed,500,0.1,3000,-3000)
+GenerateFunction_PIController(SMO_PLLSpeed,1398.38,48.89,3000,-3000,0)
 
-GenerateFunction_OnlyError_PIController(ST_SMO_Speed,900,3,3000,-3000)
+GenerateFunction_PIController(ST_SMO_PLLSpeed,900,3,3000,-3000,0)
 
 
 
