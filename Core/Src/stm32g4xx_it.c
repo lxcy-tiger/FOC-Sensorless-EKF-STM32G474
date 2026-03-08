@@ -60,7 +60,6 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t IF_startStep=1;//3步骤启动
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -230,8 +229,6 @@ void DMA1_Channel1_IRQHandler(void)
 void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
-  //SMO的强拖启动一阶段需要给电流环固定给定，不需要转速环，跳过更新
-  static uint8_t isSkipSpeed=0;
   static volatile uint8_t adc1_done = 0;
   static volatile uint8_t adc2_done = 0;
   if (__HAL_ADC_GET_FLAG(&hadc1, ADC_FLAG_JEOS))
@@ -284,7 +281,7 @@ void ADC1_2_IRQHandler(void)
   ClarkePark.clarke.Ic_I=Ic;
   Clarke_transform(&ClarkePark.clarke);
 
-  const int Observer=2;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL,3表示使用ST-SMO_PLL
+  const int Observer=0;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL,3表示使用ST-SMO_PLL
   float Espeed=0;
   float Etheta=0;
   /*
@@ -309,7 +306,7 @@ void ADC1_2_IRQHandler(void)
     Espeed=ekf_est.Espeed_O;
     Etheta=ekf_est.Etheta_O;
   }
-  else if (Observer==1){
+  else if (Observer>=1){
     /*
     * 执行一次FluxObserver-PLL,获取转子角度和速度
     */
@@ -321,108 +318,42 @@ void ADC1_2_IRQHandler(void)
     Espeed=fluxObserver_pll_est.Espeed_O;
     Etheta=fluxObserver_pll_est.Etheta_O;
   }
-  else if (Observer==2){
+  //注:if从此处断开，请留意
+
+  if (Observer==2){
     /*
-    * 执行一次SMO-PLL,获取转子角度和速度,注意SMO低速性能差,需要强拖启动
-    * 强拖启动设计为3步骤：
-    * 1.完全由强拖决定角度和速度(期间也要进行SMO估计)
-    *   关闭转速环但启用电流环,给定固定的电流设定值,一阶段结束时记录强拖最终角度和SMO最终角度
-    * 2.强拖角度和SMO角度有偏差
-    *   这里同步使用SMO的速度来增长强拖角度和SMO角度，并且加权平均，最终角度从强拖角度过渡到SMO角度
-    *   期间进行转速环和电流环，转速环会慢慢降低电流环的给定（我们的IF启动电流是要比负载实际所需的电流要高的）
-    *   直到转速达到给定，电流Iq与负载所需的电流相匹配
-    * 3.闭环到SMO
+    * 执行一次SMO-PLL,获取转子角度和速度,注意SMO低速性能差,这里先使用磁链观测器把速度提上来再切换到SMO
     */
-    if (Speed_PIstate.Set==0)return;//在main函数发出转速给定前,先不要执行后面的代码,因为后面的强拖代码暂时设计为只能启动一次(以后会改为可多次启动)
     smo_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     smo_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
     smo_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
     smo_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
     SMO_PLL_update(&smo_pll_est);
-    Espeed=smo_pll_est.Espeed_O;
-    Etheta=smo_pll_est.Etheta_O;
     static int StartCount=0;
-    fluxObserver_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
-    fluxObserver_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-    fluxObserver_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
-    fluxObserver_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
-    FluxObserver_PLL_update(&fluxObserver_pll_est);
-    if (StartCount++<400000) {
-      Espeed=fluxObserver_pll_est.Espeed_O;
-      Etheta=fluxObserver_pll_est.Etheta_O;
+    if (StartCount>=3*20000) {//三秒后切换到SMO
+      Espeed=smo_pll_est.Espeed_O;
+      Etheta=smo_pll_est.Etheta_O;
     }
+    else StartCount++;
   }
-  else {
+  else if (Observer==3) {
     /*
-    * 执行一次ST-SMO-PLL,获取转子角度和速度,注意ST-SMO低速性能差,需要强拖启动
-    * 强拖启动设计为3步骤：
-    * 1.完全由强拖决定角度和速度(期间也要进行SMO估计)
-    *   关闭转速环但启用电流环,给定固定的电流设定值,一阶段结束时记录强拖最终角度和SMO最终角度
-    * 2.强拖角度和SMO角度有偏差
-    *   这里同步使用SMO的速度来增长强拖角度和SMO角度，并且加权平均，最终角度从强拖角度过渡到SMO角度
-    *   期间进行转速环和电流环，转速环会慢慢降低电流环的给定（我们的IF启动电流是要比负载实际所需的电流要高的）
-    *   直到转速达到给定，电流Iq与负载所需的电流相匹配
-    * 3.闭环到SMO
+    * 执行一次ST-SMO-PLL,获取转子角度和速度,注意ST-SMO低速性能差,这里先使用磁链观测器把速度提上来再切换到ST-SMO
     */
-    if (Speed_PIstate.Set==0)return;//在main函数发出转速给定前,先不要执行后面的代码,因为后面的强拖代码暂时设计为只能启动一次(以后会改为可多次启动)
     st_smo_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     st_smo_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
     st_smo_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
     st_smo_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
     ST_SMO_PLL_update(&st_smo_pll_est);
-    static float IF_speed=0.0f;//IF启动速度
-    static float IF_theta=0.0f;//IF启动角度
-    static const float IF_speedAccelerate=0.005f;//IF启动加速度
-    static const float IF_StartCurrent=0.6f;//IF启动电流
-    static float ST_SMO_thetaRecord=0;//记录切换时的SMO角度值(1切到2)
-    if (IF_startStep==1) {
-      IF_speed+=IF_speedAccelerate;
-      IF_theta+=IF_speed*T_s;
-      while (IF_theta>=PI2)IF_theta-=PI2;
-      while (IF_theta<0)IF_theta+=PI2;
-      Espeed=IF_speed;
-      Etheta=IF_theta;
-      Speed_PIstate.Output=IF_StartCurrent;//这里把转速环的输出改为我们的IF启动电流
-      isSkipSpeed=1;//不要更新转速环，否则Speed_PIstate.Output会被覆盖
-      if (IF_speed>=Speed_PIstate.Set) {
-        IF_startStep=2;
-        isSkipSpeed=0;
-        ST_SMO_thetaRecord=st_smo_pll_est.Etheta_O;
-        //这里把Iq_PIstate.Set(其实就是IF_StartCurrent)全部变成转速环的积分项(以保证切换时转速环的输出不会突变)
-        //强拖时SMO的预测非常准确，所以转速误差项(设定speed-SMO的speed)非常小，转速环比例项基本为0，基本是积分项AddUp*Speed_I_Ts_VAL=Output
-        //随后就靠转速环自动调节了
-        Speed_PIstate.AddUp=Iq_PIstate.Set/Speed_I_Ts_VAL;
-      }
-    }
-    else if (IF_startStep==2) {
-      static const int32_t Smooth_ThetaTotalCounts=40000;//平滑角度切换到smo闭环
-      static int32_t Smooth_ThetaCounts=0;//平滑角度切换到smo闭环
-      IF_theta+=st_smo_pll_est.Espeed_O*T_s;
-      ST_SMO_thetaRecord+=st_smo_pll_est.Espeed_O*T_s;
-      //前面不需要将它弄到0~2pi范围
-      Etheta=(IF_theta*(Smooth_ThetaTotalCounts-Smooth_ThetaCounts)
-        +ST_SMO_thetaRecord*Smooth_ThetaCounts)/Smooth_ThetaTotalCounts;
-      Espeed=st_smo_pll_est.Espeed_O;
-      while (Etheta>=PI2)Etheta-=PI2;
-      while (Etheta<0)Etheta+=PI2;
-      if (Smooth_ThetaCounts>=Smooth_ThetaTotalCounts) {
-        IF_startStep=3;
-      }
-      if (Smooth_ThetaCounts<Smooth_ThetaTotalCounts)Smooth_ThetaCounts++;
-      //降低Iq的时候可能会输出大电压使得电流突变失控，这里选择把Iq的电流转到Id，然后再慢慢减小Id
-      //Id还是不要取太大，前面乘个0.3系数，不然电机会抖动
-      Id_PIstate.Set=0.3*(IF_StartCurrent-Iq_PIstate.Set);
-    }
-    else {
-      static int32_t Smooth_ThetaTotalCounts=40000;//慢慢将Id给定减小
-      static float Id_record=0.0f;
-      if (Smooth_ThetaTotalCounts--==40000)Id_record=Id_PIstate.Set;
-      else if (--Smooth_ThetaTotalCounts>0)Id_PIstate.Set=Id_record*Smooth_ThetaTotalCounts/40000;
-      else Id_PIstate.Set=0;
+    static int StartCount=0;
+    if (StartCount>=3*20000) {//三秒后切换到ST-SMO
       Espeed=st_smo_pll_est.Espeed_O;
       Etheta=st_smo_pll_est.Etheta_O;
     }
+    else StartCount++;
   }
+
+
   /*
    * 每隔10次执行一次转速环(即20khz/10=2khz)，获取Q电流环给定
    */
@@ -430,7 +361,7 @@ void ADC1_2_IRQHandler(void)
   Speed_RunCount++;
   if (Speed_RunCount>=10) {
     Speed_PIstate.Measure=Espeed;
-    if (isSkipSpeed==0)Speed_PI_update(&Speed_PIstate);
+    Speed_PI_update(&Speed_PIstate);
     Speed_RunCount=0;
   }
 

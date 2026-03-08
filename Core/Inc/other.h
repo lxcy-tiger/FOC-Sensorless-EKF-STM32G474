@@ -133,10 +133,10 @@ GenerateFunction_LowPassFilter(SMO_Ebeta,SMO_E_lowPass_Fc)
 GenerateFunction_LowPassFilter(SMO_Espeed,15)
 
 //ST-SMO的反电动势进行低通滤波的一阶滤波器的截止频率(hz)
-#define ST_SMO_E_lowPass_Fc 2000
+#define ST_SMO_E_lowPass_Fc 400
 GenerateFunction_LowPassFilter(ST_SMO_Ealpha,ST_SMO_E_lowPass_Fc)
 GenerateFunction_LowPassFilter(ST_SMO_Ebeta,ST_SMO_E_lowPass_Fc)
-GenerateFunction_LowPassFilter(ST_SMO_Espeed,20)
+GenerateFunction_LowPassFilter(ST_SMO_Espeed,25)
 
 GenerateFunction_LowPassFilter(Ia,2000)
 GenerateFunction_LowPassFilter(Ib,2000)

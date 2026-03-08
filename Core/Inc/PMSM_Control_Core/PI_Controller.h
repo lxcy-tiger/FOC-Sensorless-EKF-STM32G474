@@ -42,7 +42,7 @@ typedef struct PI_Controller_t {
 
 GenerateFunction_PIController(Id,12.566f,1.727825f,6.5f,-6.5f,1)
 GenerateFunction_PIController(Iq,12.566f,1.727825f,6.5f,-6.5f,1)
-#define Speed_I_Ts_VAL 4.27e-6f
+#define Speed_I_Ts_VAL 2.138e-6f
 GenerateFunction_PIController(Speed,0.008712368f, Speed_I_Ts_VAL,1.0f,-1.0f,1)
 
 
@@ -50,7 +50,7 @@ GenerateFunction_PIController(FluxObserver_PLLSpeed,80435.9f,312.45f,3000,-3000,
 
 GenerateFunction_PIController(SMO_PLLSpeed,1398.38,48.89,3000,-3000,0)
 
-GenerateFunction_PIController(ST_SMO_PLLSpeed,900,3,3000,-3000,0)
+GenerateFunction_PIController(ST_SMO_PLLSpeed,1398.38,48.89,3000,-3000,0)
 
 
 
