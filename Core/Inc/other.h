@@ -104,7 +104,7 @@ static inline float sign(float input) {
     if (input > 0) return 1;
     return 0;
 }
-static inline float sat(float input,const float minx,const float maxx,const float miny,const float maxy) {
+static inline float sat(const float input,const float minx,const float maxx,const float miny,const float maxy) {
     if (input < minx) return miny;
     if (input > maxx) return maxy;
     return (maxy-miny)/(maxx-minx)*(input-minx)+miny;

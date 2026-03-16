@@ -71,8 +71,6 @@ static void PLL_update(struct FluxObserver_PLL_t*fluxObserver_pll) {
     else {
         fluxObserver_pll->Espeed_O=Espeed;
     }
-
-
     fluxObserver_pll->Etheta_O=Etheta;
 }
 

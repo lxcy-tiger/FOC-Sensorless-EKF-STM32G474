@@ -56,7 +56,11 @@ add_executable(${CMAKE_PROJECT_NAME}
         Core/Inc/PMSM_Control_Core/SMO_PLL.h
         Core/Inc/PMSM_Control_Core/PMSM_Parameter.h
         Core/Src/PMSM_Control_Core/ST-SMO_PLL.c
-        Core/Inc/PMSM_Control_Core/ST-SMO_PLL.h)
+        Core/Inc/PMSM_Control_Core/ST-SMO_PLL.h
+        Core/Inc/PMSM_Control_Core/EKF5.h
+        Core/Src/PMSM_Control_Core/EKF5.c
+        Core/Src/PMSM_Control_Core/FluxWeakening.c
+        Core/Inc/PMSM_Control_Core/FluxWeakening.h)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)

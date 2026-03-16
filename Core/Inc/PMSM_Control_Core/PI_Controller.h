@@ -6,7 +6,7 @@
 #define FOC_SENSORLESS_PI_CONTROLLER_H
 #include <stdbool.h>
 
-typedef struct PI_Controller_t {
+struct PI_Controller_t {
     float Set;//设定值
     float Measure;//实测值
     float error;//误差值

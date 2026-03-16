@@ -31,6 +31,7 @@
 #include "PMSM_Control_Core/FluxObserver_PLL.h"
 #include "PMSM_Control_Core/SMO_PLL.h"
 #include "PMSM_Control_Core/ST-SMO_PLL.h"
+#include "PMSM_Control_Core/FluxWeakening.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -284,6 +285,8 @@ void ADC1_2_IRQHandler(void)
   const int Observer=0;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL,3表示使用ST-SMO_PLL
   float Espeed=0;
   float Etheta=0;
+  static float Valpha_last=0.0f;
+  static float Vbeta_last=0.0f;
   /*
   * 注意这里输入电压取上一次中断时计算的电压,事实上应当取上上次中断时计算的电压
   * 时刻图:
@@ -292,7 +295,11 @@ void ADC1_2_IRQHandler(void)
   * 所以说我们在中断时刻2应当取作用在周期1的电压
   * 即 中断时刻0计算的电压
   * 但是我们的ClarkePark.ipark变量只记录了前一个周期即中断时刻1计算的电压
-  * 由于中断时刻0和中断时刻1计算的电压不会有太大的差异，所以将就一下也能用
+  * 我们使用ClarkePark.ipark的电压会有偏差
+  * 所以我们使用了Valpha_last和Vbeta_last记录了上上次计算的电压，更为精确
+  * 中断时刻0，ipark计算前，记录Valpha_last和Vbeta_last=ipark(即中断时刻-1的ipark)，计算ipark(中断时刻0的ipark)
+  * 中断时刻1，ipark计算前，记录Valpha_last和Vbeta_last=ipark(即中断时刻0的ipark)，
+  * 中断时刻2，执行观测器，使用Valpha_last和Vbeta_last(即中断时刻0的ipark)，
   */
   if (Observer==0) {
     /*
@@ -300,8 +307,8 @@ void ADC1_2_IRQHandler(void)
     */
     ekf_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     ekf_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-    ekf_est.Valpha_I=ClarkePark.ipark.Valpha_O;
-    ekf_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
+    ekf_est.Valpha_I=Valpha_last;
+    ekf_est.Vbeta_I=Vbeta_last;
     EKF_update(&ekf_est);
     Espeed=ekf_est.Espeed_O;
     Etheta=ekf_est.Etheta_O;
@@ -312,13 +319,13 @@ void ADC1_2_IRQHandler(void)
     */
     fluxObserver_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     fluxObserver_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-    fluxObserver_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
-    fluxObserver_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
+    fluxObserver_pll_est.Valpha_I=Valpha_last;
+    fluxObserver_pll_est.Vbeta_I=Vbeta_last;
     FluxObserver_PLL_update(&fluxObserver_pll_est);
     Espeed=fluxObserver_pll_est.Espeed_O;
     Etheta=fluxObserver_pll_est.Etheta_O;
   }
-  //注:if从此处断开，请留意
+  //注:if从此处断开，请留意,这里SMO/STSMO都使用磁链观测器先启动,然后再切换到SMO/STSMO
 
   if (Observer==2){
     /*
@@ -326,8 +333,8 @@ void ADC1_2_IRQHandler(void)
     */
     smo_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     smo_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-    smo_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
-    smo_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
+    smo_pll_est.Valpha_I=Valpha_last;
+    smo_pll_est.Vbeta_I=Vbeta_last;
     SMO_PLL_update(&smo_pll_est);
     static int StartCount=0;
     if (StartCount>=3*20000) {//三秒后切换到SMO
@@ -342,8 +349,8 @@ void ADC1_2_IRQHandler(void)
     */
     st_smo_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     st_smo_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
-    st_smo_pll_est.Valpha_I=ClarkePark.ipark.Valpha_O;
-    st_smo_pll_est.Vbeta_I=ClarkePark.ipark.Vbeta_O;
+    st_smo_pll_est.Valpha_I=Valpha_last;
+    st_smo_pll_est.Vbeta_I=Vbeta_last;
     ST_SMO_PLL_update(&st_smo_pll_est);
     static int StartCount=0;
     if (StartCount>=3*20000) {//三秒后切换到ST-SMO
@@ -381,6 +388,7 @@ void ADC1_2_IRQHandler(void)
   /*
    * 执行一次dq电流环，获取Udq电压给定
    */
+  Id_PIstate.Set=GetIdSet_Weak(Speed_PIstate.Set,Speed_PIstate.Measure);
   Id_PIstate.Measure=id_lowpass;
   Id_PI_update(&Id_PIstate);
   Iq_PIstate.Set=Speed_PIstate.Output;
@@ -396,6 +404,12 @@ void ADC1_2_IRQHandler(void)
   */
   const float ud_decoupling=-Espeed*Ls*Iq_PIstate.Measure;
   const float uq_decoupling=Espeed*(Ls*Id_PIstate.Measure+flux);
+
+  /*
+   * 执行反park前，将上次设置的Ualpha和Ubeta记录下来，用于下一次中断时的观测器预测
+   */
+  Valpha_last=ClarkePark.ipark.Valpha_O;
+  Vbeta_last=ClarkePark.ipark.Vbeta_O;
 
   /*
    * 执行一次反park，获取Ualpha和Ubeta
@@ -415,6 +429,7 @@ void ADC1_2_IRQHandler(void)
     ClarkePark.ipark.Valpha_O *= 6.5f / modulus;
     ClarkePark.ipark.Vbeta_O*=6.5f/modulus;
   }
+
 
   /*
    * 执行一次SVPWM，更新计数值
