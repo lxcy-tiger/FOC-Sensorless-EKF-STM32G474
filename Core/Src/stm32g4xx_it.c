@@ -396,6 +396,12 @@ void ADC1_2_IRQHandler(void)
   Iq_PI_update(&Iq_PIstate);
 
   /*
+   * 执行反park前，将上次设置的Ualpha和Ubeta记录下来，用于下一次中断时的观测器预测
+   */
+  Valpha_last=ClarkePark.ipark.Valpha_O;
+  Vbeta_last=ClarkePark.ipark.Vbeta_O;
+
+  /*
   * dq电流解耦与反电动势前馈
   * 根据公式：
   * ud=Rsid+Ld(did/dt)-weLqiq
@@ -404,12 +410,6 @@ void ADC1_2_IRQHandler(void)
   */
   const float ud_decoupling=-Espeed*Ls*Iq_PIstate.Measure;
   const float uq_decoupling=Espeed*(Ls*Id_PIstate.Measure+flux);
-
-  /*
-   * 执行反park前，将上次设置的Ualpha和Ubeta记录下来，用于下一次中断时的观测器预测
-   */
-  Valpha_last=ClarkePark.ipark.Valpha_O;
-  Vbeta_last=ClarkePark.ipark.Vbeta_O;
 
   /*
    * 执行一次反park，获取Ualpha和Ubeta
