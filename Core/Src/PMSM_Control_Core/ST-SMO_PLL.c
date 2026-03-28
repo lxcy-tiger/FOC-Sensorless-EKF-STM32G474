@@ -6,17 +6,17 @@
 
 static float Etheta=0.f;//电角度预测值(rad)
 static float Espeed=0.f;//电角速度预测值(rad/s)
-static const float k1=0.5f;//增益1
-static const float k2=3000.f;//增益2
+static const float k1=7.1f;//增益1
+static const float k2=130.f;//增益2
 static float Ealpha_st_smo=0.f; //ST-SMO的Ealpha项
 static float Ebeta_st_smo=0.f;//ST-SMO的Ebeta项
-static float ialpha_est=0.f;//ST-SMO预估ialpha
+static float ialpha_est=0.f;//ST-SMO预估ialphas
 static float ibeta_est=0.f;//ST-SMO预估ibeta
 static float signAlpha_addup=0.f;//积分项
 static float signBeta_addup=0.f;//积分项
 static const float sign_addup_MAX=5;//积分项限幅
 struct ST_SMO_PLL_t st_smo_pll_est;
-static const uint8_t useLPF_SMO_E=1;//使用低通滤波滤除高频分量，截止频率设得很高，相位误差比较小，这里忽略相位误差
+static const uint8_t useLPF_STSMO_E=1;//使用低通滤波滤除高频分量
 void ST_SMO_update(struct ST_SMO_PLL_t*st_smo_pll) {
     const float ualpha=st_smo_pll->Valpha_I;
     const float ubeta=st_smo_pll->Vbeta_I;
@@ -44,7 +44,7 @@ void ST_SMO_update(struct ST_SMO_PLL_t*st_smo_pll) {
     ibeta_est=ibeta_est+T_s*(1/Ls*ubeta-Rs/Ls*ibeta_est-1/Ls*Ebeta_st_smo);
 
 
-    if (useLPF_SMO_E) {
+    if (useLPF_STSMO_E) {
         st_smo_pll->E_alpha_O=lowPass_filter_ST_SMO_Ealpha(Ealpha_st_smo);
         st_smo_pll->E_beta_O=lowPass_filter_ST_SMO_Ebeta(Ebeta_st_smo);
     }
@@ -74,7 +74,7 @@ static void PLL_update(struct ST_SMO_PLL_t*st_smo_pll) {
     while (Etheta >= PI2) Etheta -= PI2;
     while (Etheta < 0.f) Etheta += PI2;
     static const float wc=ST_SMO_E_lowPass_Fc*PI2;//低通滤波器截止频率(rad/s)
-    if (useLPF_SMO_E) {
+    if (useLPF_STSMO_E) {
         st_smo_pll->Etheta_O=Etheta+atan2f(st_smo_pll->Espeed_O,wc);
     }
     else {

@@ -37,6 +37,7 @@ void EKF5_init() {
 }
 
 void EKF5_update(struct EKF5_t*ekf5) {
+    return;
     const float i_alpha_k_prev = x_k_k[0];
     const float i_beta_k_prev = x_k_k[1];
     const float w_e_k_prev = x_k_k[2];

@@ -19,7 +19,7 @@
 |   磁链观测器   |                                                       我们使用了PLL，并且参考了论文:《Performance Improvement of Nonlinear Flux Observer for Sensorless Control of PMSM》                                                        |
 | SMO/STSMO |                                                              滑膜观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s),仍在调试阶段,这里暂时不写强拖启动,而是借助磁链观测器启动                                                               |
 |  与上位机通信   |                                                                                           USB通信，VOFA+(JustFloat协议)显示波形                                                                                            |
-|   软件版本    |                                      CLion 2025.3,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                      |
+|   软件版本    |                                      CLion 2026.1,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                      |
 
 
 ## 🔌 **接线说明**
