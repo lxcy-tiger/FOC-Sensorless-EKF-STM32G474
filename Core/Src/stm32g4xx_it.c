@@ -263,15 +263,15 @@ void ADC1_2_IRQHandler(void)
   const float Ib_raw=(IB_REF-(int32_t)vb_source)*VCC_3V3/IB_K/4095.f;
 
 
-  //中值滤波去毛刺
+  //低通滤波去毛刺(虽然中值滤波能很好去除电流采样毛刺,但是会恶化控制效果,这里使用低通滤波代替了)
   //const float Ia = median_filter_Ia_5(Ia_raw);
   //const float Ib = median_filter_Ib_5(Ib_raw);
   //const float Ia=IIR_filter2A(Ia_median);
   //const float Ib=IIR_filter2B(Ib_median);
-  const float Ia = Ia_raw;
-  const float Ib = Ib_raw;
-  //const float Ia =lowPass_filter_Ia(Ia_raw);
-  //const float Ib =lowPass_filter_Ib(Ib_raw);
+  //const float Ia = Ia_raw;
+  //const float Ib = Ib_raw;
+  const float Ia =lowPass_filter_Ia(Ia_raw);
+  const float Ib =lowPass_filter_Ib(Ib_raw);
   const float Ic=-(Ia+Ib);
 
   /*
