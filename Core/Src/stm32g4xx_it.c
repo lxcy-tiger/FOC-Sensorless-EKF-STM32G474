@@ -51,7 +51,22 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+/*
+ *  IF强拖切闭环步骤
+ *  数字0:IF强拖步骤,速度不停增加(IdIq电流环开启,转速环关闭,观测器开启,角度:由IF给定)
+ *  数字1:IF强拖结束,减小Iq给定直到观测器角度与强拖角度靠近(IdIq电流环开启,转速环关闭,观测器开启,角度:由IF给定)
+ *  数字2:切换闭环(IdIq电流环开启,转速环开启,观测器开启,角度:由观测器给定)
+*/
+uint8_t IF_Start_Step=0;
+static const float IF_IqCurrentTarget=0.6f;//IF强拖电流最终给定(给定Iq电流环最终值,单位A)
+static const float IF_IqCurrentAcceleration=0.5f;//IF强拖电流增加速度(A/s)
+float IF_IqCurrent=0.0f;//IF强拖电流实际值(Iq给定值以每秒IF_IqCurrentAcceleration的速度增加,慢慢上升直到IF_IqCurrentTarget)
+static const float IF_Acceleration=100.f;//IF加速度(表示强拖速度增加的速度，单位rad/s^2)
+static const float IF_Target_Speed=500.f;//IF目标速度(表示结束强拖应该达到的速度,即IF_Start_Step何时变为1的阈值,单位rad/s)
+float IF_ETheta=0.0f;//IF角度
+float IF_ESpeed=0.0f;//IF速度
+float OB_ETheta=0.0f;//观测器角度
+float OB_ESpeed=0.0f;//观测器速度
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -253,6 +268,7 @@ void ADC1_2_IRQHandler(void)
     adc2_done = 0;
   }
   else return;
+
   /*
    *获取ABC相电流
    */
@@ -310,10 +326,10 @@ void ADC1_2_IRQHandler(void)
     ekf_est.Valpha_I=Valpha_last;
     ekf_est.Vbeta_I=Vbeta_last;
     EKF_update(&ekf_est);
-    Espeed=ekf_est.Espeed_O;
-    Etheta=ekf_est.Etheta_O;
+    OB_ESpeed=ekf_est.Espeed_O;
+    OB_ETheta=ekf_est.Etheta_O;
   }
-  else if (Observer>=1){
+  else if (Observer==1){
     /*
     * 执行一次FluxObserver-PLL,获取转子角度和速度
     */
@@ -322,12 +338,10 @@ void ADC1_2_IRQHandler(void)
     fluxObserver_pll_est.Valpha_I=Valpha_last;
     fluxObserver_pll_est.Vbeta_I=Vbeta_last;
     FluxObserver_PLL_update(&fluxObserver_pll_est);
-    Espeed=fluxObserver_pll_est.Espeed_O;
-    Etheta=fluxObserver_pll_est.Etheta_O;
+    OB_ESpeed=fluxObserver_pll_est.Espeed_O;
+    OB_ETheta=fluxObserver_pll_est.Etheta_O;
   }
-  //注:if从此处断开，请留意,这里SMO/STSMO都使用磁链观测器先启动,然后再切换到SMO/STSMO
-
-  if (Observer==2){
+  else if (Observer==2){
     /*
     * 执行一次SMO-PLL,获取转子角度和速度,注意SMO低速性能差,这里先使用磁链观测器把速度提上来再切换到SMO
     */
@@ -336,12 +350,8 @@ void ADC1_2_IRQHandler(void)
     smo_pll_est.Valpha_I=Valpha_last;
     smo_pll_est.Vbeta_I=Vbeta_last;
     SMO_PLL_update(&smo_pll_est);
-    static int StartCount=0;
-    if (StartCount>=3*20000) {//三秒后切换到SMO
-      Espeed=smo_pll_est.Espeed_O;
-      Etheta=smo_pll_est.Etheta_O;
-    }
-    else StartCount++;
+    OB_ESpeed=smo_pll_est.Espeed_O;
+    OB_ETheta=smo_pll_est.Etheta_O;
   }
   else if (Observer==3) {
     /*
@@ -352,12 +362,46 @@ void ADC1_2_IRQHandler(void)
     st_smo_pll_est.Valpha_I=Valpha_last;
     st_smo_pll_est.Vbeta_I=Vbeta_last;
     ST_SMO_PLL_update(&st_smo_pll_est);
-    static int StartCount=0;
-    if (StartCount>=3*20000) {//三秒后切换到ST-SMO
-      Espeed=st_smo_pll_est.Espeed_O;
-      Etheta=st_smo_pll_est.Etheta_O;
+
+    OB_ESpeed=st_smo_pll_est.Espeed_O;
+    OB_ETheta=st_smo_pll_est.Etheta_O;
+  }
+
+  if (IF_Start_Step==0) {
+    IF_ESpeed+=IF_Acceleration*T_s;
+    IF_ETheta+=IF_ESpeed*T_s;
+    while (IF_ETheta>=PI2)IF_ETheta-=PI2;
+    while (IF_ETheta<0)IF_ETheta+=PI2;
+    Espeed=IF_ESpeed;
+    Etheta=IF_ETheta;
+    if (IF_ESpeed>=IF_Target_Speed) {
+      IF_Start_Step=1;
+      ClarkePark.park.Ialpha_I=Id_PIstate.Set;
+      ClarkePark.park.Ibeta_I=Iq_PIstate.Set;
+      ClarkePark.park.Theta_I=OB_ETheta-IF_ETheta;
+      Park_transform(&ClarkePark.park);
+      Id_PIstate.Set=ClarkePark.park.Id_O;
+      Iq_PIstate.Set=ClarkePark.park.Iq_O;
+
+      ClarkePark.park.Ialpha_I=Id_PIstate.Output;
+      ClarkePark.park.Ibeta_I=Iq_PIstate.Output;
+      ClarkePark.park.Theta_I=OB_ETheta-IF_ETheta;
+      Park_transform(&ClarkePark.park);
+      Id_PIstate.Output=ClarkePark.park.Id_O;
+      Iq_PIstate.Output=ClarkePark.park.Iq_O;
+
+      Id_PIstate.AddUp=Id_PIstate.Output*(1/Current_I_Ts_VAL);
+      Iq_PIstate.AddUp=Id_PIstate.Output*(1/Current_I_Ts_VAL);
+
+      Speed_PIstate.AddUp=(Iq_PIstate.Set-(Speed_PIstate.Set-Speed_PIstate.Measure)*Speed_P_VAL)*(1/Speed_I_Ts_VAL);
+      Speed_PIstate.Output=Iq_PIstate.Set;
+
+      Etheta=OB_ETheta;
     }
-    else StartCount++;
+  }
+  else {
+    Espeed=OB_ESpeed;
+    Etheta=OB_ETheta;
   }
 
 
@@ -371,7 +415,6 @@ void ADC1_2_IRQHandler(void)
     Speed_PI_update(&Speed_PIstate);
     Speed_RunCount=0;
   }
-
   /*
    * 执行一次Park，获取dq电流
    */
@@ -388,10 +431,18 @@ void ADC1_2_IRQHandler(void)
   /*
    * 执行一次dq电流环，获取Udq电压给定
    */
-  Id_PIstate.Set=GetIdSet_Weak(Speed_PIstate.Set,Speed_PIstate.Measure);
+  if (Id_PIstate.Set>=0.f)Id_PIstate.Set-=0.00001f;
+    else Id_PIstate.Set=0.f;
+  //Id_PIstate.Set=GetIdSet_Weak(Speed_PIstate.Set,Speed_PIstate.Measure);
   Id_PIstate.Measure=id_lowpass;
   Id_PI_update(&Id_PIstate);
-  Iq_PIstate.Set=Speed_PIstate.Output;
+  if (IF_Start_Step==0) {
+    if (IF_IqCurrent<IF_IqCurrentTarget)IF_IqCurrent+=IF_IqCurrentAcceleration*T_s;
+    Iq_PIstate.Set=IF_IqCurrent;
+  }
+  else {
+    Iq_PIstate.Set=Speed_PIstate.Output;
+  }
   Iq_PIstate.Measure=iq_lowpass;
   Iq_PI_update(&Iq_PIstate);
 
@@ -408,8 +459,9 @@ void ADC1_2_IRQHandler(void)
   * uq=Rsiq+Lq(diq/dt)+we(Ldid+flux)
   * 可知这里得到的dq电流环输出ud,uq，并不能准确反映id或者iq的大小,通常这里可以减去耦合项we*xxx
   */
-  const float ud_decoupling=-Espeed*Ls*Iq_PIstate.Measure;
-  const float uq_decoupling=Espeed*(Ls*Id_PIstate.Measure+flux);
+  static const uint8_t use_decoupling=0;//是否使用前馈解耦
+  const float ud_decoupling=use_decoupling ? -Espeed*Ls*Iq_PIstate.Measure : 0;
+  const float uq_decoupling=use_decoupling ? Espeed*(Ls*Id_PIstate.Measure+flux) : use_decoupling;
 
   /*
    * 执行一次反park，获取Ualpha和Ubeta

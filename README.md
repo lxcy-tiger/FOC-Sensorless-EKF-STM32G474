@@ -17,7 +17,8 @@
 |    观测器    |                                                                       EKF(20khz)或改进的磁链观测器(20khz)或滑膜观测器(20khz)<br>可在ADC1中断中更改变量Observer的值切换                                                                        | 
 |    EKF    |                                                                                         四维状态向量ialpha,ibeta,Espeed,Etheta                                                                                          |
 |   磁链观测器   |                                                       我们使用了PLL，并且参考了论文:《Performance Improvement of Nonlinear Flux Observer for Sensorless Control of PMSM》                                                        |
-| SMO/STSMO |                                                              滑膜观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s),仍在调试阶段,这里暂时不写强拖启动,而是借助磁链观测器启动                                                               |
+| SMO/STSMO |                                                                             滑膜观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s)                                                                              |
+|   IF启动    |                                                               我们研究了IF启动切闭环的各种方法，找到了一种"坐标变换法"切换闭环，切换时没有顿挫感，我们将它用在所有的观测器启动中而不仅限于SMO，以保证全部观测器都能够完美地启动                                                                |                                                                  |
 |  与上位机通信   |                                                                                           USB通信，VOFA+(JustFloat协议)显示波形                                                                                            |
 |   软件版本    |                                      CLion 2026.1,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                      |
 
@@ -110,6 +111,8 @@ include("cmake/gcc-arm-none-eabi.cmake")
 ·新增keil项目迁移，现在可以使用keil打开该项目，点击下方链接即可获取:
 
 [访问keil项目](https://github.com/lxcy-tiger/FOC-Sensorless-EKF-STM32G474_keil)
+
+·本项目部分代码和文档内容将被用于作者的2026年本科毕业论文
 
 ## ⚠️ **安全须知**
 

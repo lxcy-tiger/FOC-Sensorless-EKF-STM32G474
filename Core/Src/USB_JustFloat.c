@@ -70,14 +70,17 @@ void recordRunningData() {
         USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Valpha_O;
         USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Vbeta_O;
 
-        USB_data[USB_DataRecordIndex++]=ekf_est.Ialpha_I;
-        USB_data[USB_DataRecordIndex++]=ekf_est.Ibeta_I;
-        USB_data[USB_DataRecordIndex++]=ekf_est.Ialpha_O;
-        USB_data[USB_DataRecordIndex++]=ekf_est.Ibeta_O;
-        USB_data[USB_DataRecordIndex++]=ekf_est.Etheta_O;
+        USB_data[USB_DataRecordIndex++]=smo_pll_est.Espeed_O;
+        USB_data[USB_DataRecordIndex++]=smo_pll_est.Etheta_O;
+        extern uint8_t IF_Start_Step;
+        extern float IF_ETheta;//IF角度
+        extern float IF_ESpeed;//IF速度
+        USB_data[USB_DataRecordIndex++]=IF_Start_Step;
+        USB_data[USB_DataRecordIndex++]=IF_ETheta;
+        USB_data[USB_DataRecordIndex++]=IF_ESpeed;
 
         USB_data[USB_DataRecordIndex++]=ClarkePark.clarke.Ia_I;
-        USB_data[USB_DataRecordIndex++]=ClarkePark.clarke.Ib_I;
+        USB_data[USB_DataRecordIndex++]=ClarkePark.ipark.Theta_I;
 
 
         USB_data[USB_DataRecordIndex++]=*((float*)&tail[0]);

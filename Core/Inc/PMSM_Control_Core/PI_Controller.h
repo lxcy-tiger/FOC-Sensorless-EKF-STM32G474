@@ -42,11 +42,13 @@ struct PI_Controller_t {
         NAME->Output = output; \
     } \
     extern struct PI_Controller_t NAME##_PIstate;
-
-GenerateFunction_PIController(Id,12.566f,1.727825f,6.5f,-6.5f,1)
-GenerateFunction_PIController(Iq,12.566f,1.727825f,6.5f,-6.5f,1)
+#define Current_P_VAL 12.566f
+#define Current_I_Ts_VAL 1.727825f
+GenerateFunction_PIController(Id,Current_P_VAL,Current_I_Ts_VAL,6.5f,-6.5f,1)
+GenerateFunction_PIController(Iq,Current_P_VAL,Current_I_Ts_VAL,6.5f,-6.5f,1)
+#define Speed_P_VAL 0.008712368f
 #define Speed_I_Ts_VAL 2.138e-6f
-GenerateFunction_PIController(Speed,0.008712368f, Speed_I_Ts_VAL,1.0f,-1.0f,1)
+GenerateFunction_PIController(Speed,Speed_P_VAL, Speed_I_Ts_VAL,1.0f,-1.0f,1)
 
 
 GenerateFunction_PIController(FluxObserver_PLLSpeed,64404.56f,200.14f,3000,-3000,0)
