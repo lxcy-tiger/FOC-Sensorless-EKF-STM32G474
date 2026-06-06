@@ -1,6 +1,6 @@
 # FOC-Sensorless-EKF-STM32G474
 
-无感FOC项目，采用EKF观测器或非线性磁链观测器(Nonlinear Flux Observer)或滑膜观测器(SMO)，MCU采用STM32G474RET6，板子使用ST的X-NUCLEO-IHM07M1评估板，项目为Clion的CMAKE项目，可以使用Clion或VSCode打开。
+无感FOC项目，采用EKF观测器或非线性磁链观测器(Nonlinear Flux Observer)或滑模观测器(SMO)，MCU采用STM32G474RET6，板子使用ST的X-NUCLEO-IHM07M1评估板，项目为Clion的CMAKE项目，可以使用Clion或VSCode打开。
 
 
 ## 📋 **总览**
@@ -14,10 +14,10 @@
 |   SVPWM   | 使用HRTIM(STM32G474特有的高精度计时器)产生PWM<br>计时器频率:0.68Ghz(Master Timer) 1.36Ghz(Timer A,C,D)<br>period值:34000(合Master Timer或Timer ACD 0.68Ghz/34000=20khz)<br>PWM模式:中心对称(向上向下计数，中间为高电平,两侧为低电平)<br>ADC触发时机:Master Timer更新时 |
 |    电流环    |                                                                                              PI控制(有抗饱和,有前馈解耦),20khz                                                                                               |
 |    转速环    |                                                                                                  PI控制(有抗饱和),2khz                                                                                                  |
-|    观测器    |                                                                       EKF(20khz)或改进的磁链观测器(20khz)或滑膜观测器(20khz)<br>可在ADC1中断中更改变量Observer的值切换                                                                        | 
+|    观测器    |                                                                       EKF(20khz)或改进的磁链观测器(20khz)或滑模观测器(20khz)<br>可在ADC1中断中更改变量Observer的值切换                                                                        | 
 |    EKF    |                                                                                         四维状态向量ialpha,ibeta,Espeed,Etheta                                                                                          |
 |   磁链观测器   |                                                       我们使用了PLL，并且参考了论文:《Performance Improvement of Nonlinear Flux Observer for Sensorless Control of PMSM》                                                        |
-| SMO/STSMO |                                                                             滑膜观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s)                                                                              |
+| SMO/STSMO |                                                                          滑模观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s)，需要IF启动                                                                          |
 |   IF启动    |                                                               我们研究了IF启动切闭环的各种方法，找到了一种"坐标变换法"切换闭环，切换时没有顿挫感，我们将它用在所有的观测器启动中而不仅限于SMO，以保证全部观测器都能够完美地启动                                                                |                                                                  |
 |  与上位机通信   |                                                                                           USB通信，VOFA+(JustFloat协议)显示波形                                                                                            |
 |   软件版本    |                                      CLion 2026.1,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                      |
@@ -84,7 +84,7 @@ SMO与STSMO（待调整）估计反电动势与实际反电动势对比:
 
 ## 📎 **补充内容**
 
-·在使用仿真模型时，注意不要将运行模式切换到"加速"或"快速加速"，而是使用"普通"，因为S-Function Builder在"加速"或"快速加速"似乎有些问题，
+·在使用仿真模型时，注意不要将运行模式切换到"加速"或"快速加速"，而是使用"普通"，因为S-Function Builder在"加速"或"快速加速"似乎有些问题。
 仿真一次后，S-Function Builder里面的变量会维持仿真结束的值，如果再次仿真，建议重新编译一次代码或关闭MATLAB重新打开仿真文件，否则会出现一开始仿真，EKF的预测转速就是几百rad/s的奇怪结果(包括PI控制器保留原来的输出的问题),最新消息:目前该问题已解决，是在xxx_start_Wrapper函数中清空各变量即可。
 
 ·工程已升级为CUBEMX6.16.0工程，最新版CUBEMX每次默认生成的代码不含有工具链的说明，直接运行会失败，每次生成代码后，需要在CMakeLists.txt较前部分添加一行：

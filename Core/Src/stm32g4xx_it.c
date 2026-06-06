@@ -53,9 +53,9 @@
 /* USER CODE BEGIN PV */
 /*
  *  IF强拖切闭环步骤
- *  数字0:IF强拖步骤,速度不停增加(IdIq电流环开启,转速环关闭,观测器开启,角度:由IF给定)
- *  数字1:IF强拖结束,减小Iq给定直到观测器角度与强拖角度靠近(IdIq电流环开启,转速环关闭,观测器开启,角度:由IF给定)
- *  数字2:切换闭环(IdIq电流环开启,转速环开启,观测器开启,角度:由观测器给定)
+ *  数字0:IF强拖步骤,速度不停增加(IdIq电流环开启,转速环开启,观测器开启,角度:由IF给定)
+ *        数字0->数字1:单周期坐标变换，瞬间切换
+ *  数字1:IF强拖结束并闭环转速环和观测器,减小Id给定进行收尾(IdIq电流环开启,转速环开启,观测器开启,角度:由观测器给定)
 */
 uint8_t IF_Start_Step=0;
 static const float IF_IqCurrentTarget=0.6f;//IF强拖电流最终给定(给定Iq电流环最终值,单位A)
@@ -391,7 +391,7 @@ void ADC1_2_IRQHandler(void)
       Iq_PIstate.Output=ClarkePark.park.Iq_O;
 
       Id_PIstate.AddUp=Id_PIstate.Output*(1/Current_I_Ts_VAL);
-      Iq_PIstate.AddUp=Id_PIstate.Output*(1/Current_I_Ts_VAL);
+      Iq_PIstate.AddUp=Iq_PIstate.Output*(1/Current_I_Ts_VAL);
 
       Speed_PIstate.AddUp=(Iq_PIstate.Set-(Speed_PIstate.Set-Speed_PIstate.Measure)*Speed_P_VAL)*(1/Speed_I_Ts_VAL);
       Speed_PIstate.Output=Iq_PIstate.Set;
