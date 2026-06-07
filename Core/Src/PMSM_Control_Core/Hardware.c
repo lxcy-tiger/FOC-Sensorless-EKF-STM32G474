@@ -41,10 +41,5 @@ void Offline_IabVcc_Adjust() {
     IA_REF=IarefAddUp/Repeat;
     IB_REF=IbrefAddUp/Repeat;
     VCC_3V3=(*VREFINT_CAL_ADDR)*3.f*Repeat/VrefAddUp;
-//#define GIVEMORE
-#ifdef GIVEMORE
-    IA_REF-=70;
-    IB_REF-=80;
-#endif
 
 }

@@ -291,7 +291,7 @@ void ADC1_2_IRQHandler(void)
   const float Ic=-(Ia+Ib);
 
   /*
-   * 执行一次Clarke，获取静止三相电流
+   * 执行一次Clarke，获取静止两相电流
    */
   ClarkePark.clarke.Ia_I=Ia;
   ClarkePark.clarke.Ib_I=Ib;
@@ -343,7 +343,7 @@ void ADC1_2_IRQHandler(void)
   }
   else if (Observer==2){
     /*
-    * 执行一次SMO-PLL,获取转子角度和速度,注意SMO低速性能差,这里先使用磁链观测器把速度提上来再切换到SMO
+    * 执行一次SMO-PLL,获取转子角度和速度,注意SMO低速性能差,这里统一强拖切闭环
     */
     smo_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     smo_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
@@ -355,7 +355,7 @@ void ADC1_2_IRQHandler(void)
   }
   else if (Observer==3) {
     /*
-    * 执行一次ST-SMO-PLL,获取转子角度和速度,注意ST-SMO低速性能差,这里先使用磁链观测器把速度提上来再切换到ST-SMO
+    * 执行一次ST-SMO-PLL,获取转子角度和速度,注意ST-SMO低速性能差,这里统一强拖切闭环
     */
     st_smo_pll_est.Ialpha_I=ClarkePark.clarke.Ialpha_O;
     st_smo_pll_est.Ibeta_I=ClarkePark.clarke.Ibeta_O;
@@ -375,6 +375,7 @@ void ADC1_2_IRQHandler(void)
     Espeed=IF_ESpeed;
     Etheta=IF_ETheta;
     if (IF_ESpeed>=IF_Target_Speed) {
+      //强拖过渡阶段，进行两次坐标变换切换闭环
       IF_Start_Step=1;
       ClarkePark.park.Ialpha_I=Id_PIstate.Set;
       ClarkePark.park.Ibeta_I=Iq_PIstate.Set;
@@ -425,6 +426,9 @@ void ADC1_2_IRQHandler(void)
 
   /*
    * 低通滤波滤除id,iq高频分量
+   * (这里注意强拖时坐标变换切换闭环,低通滤波可能会导致Set与Measure有一些差异,
+   *    但是由于低通滤波截止频率比较大(k≈0.94),所以误差并不大,可以忽略,
+   *    当然我也不知道截止频率那么大的低通滤波在这里有什么用(或许该把截止频率弄小一点),但是既然写了,也懒得删除了)
    */
   float id_lowpass = lowPass_filter_Id(ClarkePark.park.Id_O);
   float iq_lowpass = lowPass_filter_Iq(ClarkePark.park.Iq_O);
@@ -432,8 +436,8 @@ void ADC1_2_IRQHandler(void)
    * 执行一次dq电流环，获取Udq电压给定
    */
   if (Id_PIstate.Set>=0.f)Id_PIstate.Set-=0.00001f;
-    else Id_PIstate.Set=0.f;
-  //Id_PIstate.Set=GetIdSet_Weak(Speed_PIstate.Set,Speed_PIstate.Measure);
+  else Id_PIstate.Set=0.f;
+  //使用暂时不要使用弱磁，Id_PIstate.Set=GetIdSet_Weak(Speed_PIstate.Set,Speed_PIstate.Measure);
   Id_PIstate.Measure=id_lowpass;
   Id_PI_update(&Id_PIstate);
   if (IF_Start_Step==0) {
