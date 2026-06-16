@@ -18,7 +18,7 @@
 |    EKF    |                                                                                         四维状态向量ialpha,ibeta,Espeed,Etheta                                                                                          |
 |   磁链观测器   |                                                       我们使用了PLL，并且参考了论文:《Performance Improvement of Nonlinear Flux Observer for Sensorless Control of PMSM》                                                        |
 | SMO/STSMO |                                                                          滑模观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s)，需要IF启动                                                                          |
-|   IF启动    |                                                               我们研究了IF启动切闭环的各种方法，找到了一种"坐标变换法"切换闭环，切换时没有顿挫感，我们将它用在所有的观测器启动中而不仅限于SMO，以保证全部观测器都能够完美地启动                                                                |                                                                  |
+|   IF启动    |                                                               我们研究了IF启动切闭环的各种方法，找到了一种"双DQ变换法"切换闭环，切换时没有顿挫感，我们将它用在所有的观测器启动中而不仅限于SMO，以保证全部观测器都能够完美地启动                                                               |                                                                  |
 |  与上位机通信   |                                                                                           USB通信，VOFA+(JustFloat协议)显示波形                                                                                            |
 |   软件版本    |                                      CLion 2026.1,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                      |
 
