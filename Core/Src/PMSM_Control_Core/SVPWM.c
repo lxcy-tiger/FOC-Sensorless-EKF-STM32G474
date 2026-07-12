@@ -66,7 +66,7 @@ void SVPWM_Calculate_Set(float Valpha, float Vbeta) {
             Ty = 0;
             break;
     }
-    uint32_t small = (Ts - Tx - Ty) * (1.0 / 4), medium = (Ts + Tx - Ty) * (1.0 / 4), big = (Ts + Tx + Ty) * (1.0 / 4);
+    uint32_t small = (Ts - Tx - Ty) * (1.0f / 4), medium = (Ts + Tx - Ty) * (1.0f / 4), big = (Ts + Tx + Ty) * (1.0f / 4);
     small = clamp_u32(small, CompareMin, HRTIM_Period - CompareMin);
     medium = clamp_u32(medium, CompareMin, HRTIM_Period - CompareMin);
     big = clamp_u32(big, CompareMin, HRTIM_Period - CompareMin);

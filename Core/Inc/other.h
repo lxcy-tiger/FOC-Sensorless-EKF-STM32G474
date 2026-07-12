@@ -85,12 +85,12 @@ static inline void GiveESpeedRpm(float espeed) {
     GiveESpeed(espeed*PI2/60);
 }
 //给定机械角速度(rad/s)
-static inline void GiveSpeed(float espeed) {
-    GiveESpeed(espeed*POLE_PAIRS);
+static inline void GiveSpeed(float speed) {
+    GiveESpeed(speed*POLE_PAIRS);
 }
 //给定机械角速度(rpm)
-static inline void GiveSpeedRpm(float espeed) {
-    GiveESpeedRpm(espeed*POLE_PAIRS);
+static inline void GiveSpeedRpm(float speed) {
+    GiveESpeedRpm(speed*POLE_PAIRS);
 }
 
 float IIR_filter2Ia(float input);
