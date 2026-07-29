@@ -131,10 +131,10 @@ int main(void)
   //开启定时器
   HAL_HRTIM_WaveformCountStart(&hhrtim1,HRTIM_TIMERID_MASTER
     |HRTIM_TIMERID_TIMER_A|HRTIM_TIMERID_TIMER_C|HRTIM_TIMERID_TIMER_D);
-  //开启通道输出，随便给定一个初始值
+  //开启通道输出，给定一个零矢量占空比
   HAL_HRTIM_WaveformOutputStart(&hhrtim1,
     HRTIM_OUTPUT_TA1|HRTIM_OUTPUT_TC1|HRTIM_OUTPUT_TD1);
-  HRTIM_Set_PWMCompare(10000,15000,20000);
+  HRTIM_Set_PWMCompare(34000/2,34000/2,34000/2);
   // EN引脚使能
   HAL_GPIO_WritePin(EN1_GPIO_Port,EN1_Pin,GPIO_PIN_SET);
   HAL_GPIO_WritePin(EN2_GPIO_Port,EN2_Pin,GPIO_PIN_SET);
