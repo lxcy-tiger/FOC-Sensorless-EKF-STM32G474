@@ -298,7 +298,7 @@ void ADC1_2_IRQHandler(void)
   ClarkePark.clarke.Ic_I=Ic;
   Clarke_transform(&ClarkePark.clarke);
 
-  const int Observer=0;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL,3表示使用ST-SMO_PLL
+  const int Observer=1;//0表示使用EKF,1表示使用FluxObserver-PLL,2表示使用SMO-PLL,3表示使用ST-SMO_PLL
   float Espeed=0;
   float Etheta=0;
   static float Valpha_last=0.0f;
@@ -490,7 +490,7 @@ void ADC1_2_IRQHandler(void)
   /*
    * 执行一次SVPWM，更新计数值
    */
-  SVPWM_Calculate_Set(ClarkePark.ipark.Valpha_O,ClarkePark.ipark.Vbeta_O);
+  SVPWM_Calculate_Set(ClarkePark.ipark.Valpha_O,ClarkePark.ipark.Vbeta_O,Ia,Ib,Ic);
 
   //记录数据
   recordRunningData();

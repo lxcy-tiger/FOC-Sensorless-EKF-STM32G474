@@ -13,14 +13,22 @@ void SetUdc(float newUdc){
 float GetUdc() {
     return Udc;
 }//获取Udc唯一接口
+
 static const uint16_t HRTIM_Period = 34000; //HRTIM的四个时钟的周期值(MASTER、A、C、D)
 //将Ts设为计数值的两倍，那么A、C、D的比较值恰好等于计算出来的Ton，注意，这里要用U32，不然会溢出
 static const uint32_t Ts = HRTIM_Period * 2;
 static const uint16_t CompareMin = 100; //计数器最小计数值
 
+//设定PWM比较值，这里ABC三相分别对应TIMER ACD三个计时器。(-O2自动内联)
+static inline void HRTIM_Set_PWMCompare(uint16_t A,uint16_t B,uint16_t C) {
+    __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_1, clamp_u32(A, CompareMin, HRTIM_Period - CompareMin));
+    __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, HRTIM_COMPAREUNIT_1, clamp_u32(B, CompareMin, HRTIM_Period - CompareMin));
+    __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_D, HRTIM_COMPAREUNIT_1, clamp_u32(C, CompareMin, HRTIM_Period - CompareMin));
+}
+
 
 //计算SVPWM并更新到HRTIM的计数值(内部实现简单非线性限幅，建议在外部对Valpha和Vbeta进行等比例限幅，以避免过调制)
-void SVPWM_Calculate_Set(float Valpha, float Vbeta) {
+void SVPWM_Calculate_Set(float Valpha, float Vbeta,float ia,float ib,float ic) {
     if (Udc == 0)return; //避免后续除法导致错误。
 
     //扇区(Sector)判断，A=Vbeta,B=(sqrt(3)*Valpha-Vbeta)/2,C=(-sqrt(3)*Valpha-Vbeta)/2
@@ -67,27 +75,25 @@ void SVPWM_Calculate_Set(float Valpha, float Vbeta) {
             break;
     }
     uint32_t small = (Ts - Tx - Ty) * (1.0f / 4), medium = (Ts + Tx - Ty) * (1.0f / 4), big = (Ts + Tx + Ty) * (1.0f / 4);
-    small = clamp_u32(small, CompareMin, HRTIM_Period - CompareMin);
-    medium = clamp_u32(medium, CompareMin, HRTIM_Period - CompareMin);
-    big = clamp_u32(big, CompareMin, HRTIM_Period - CompareMin);
+    int32_t ia_DeadTimeComp=ia>0.01f?DeadTimeComp:0,ib_DeadTimeComp=ib>0.01f?DeadTimeComp:0,ic_DeadTimeComp=ic>0.01f?DeadTimeComp:0;
     switch (Sector) {
         case 1:
-            HRTIM_Set_PWMCompare(small, medium, big);
+            HRTIM_Set_PWMCompare(small+ia_DeadTimeComp, medium+ib_DeadTimeComp, big+ic_DeadTimeComp);
             break;
         case 2:
-            HRTIM_Set_PWMCompare(medium, small, big);
+            HRTIM_Set_PWMCompare(medium+ia_DeadTimeComp, small+ib_DeadTimeComp, big+ic_DeadTimeComp);
             break;
         case 3:
-            HRTIM_Set_PWMCompare(big, small, medium);
+            HRTIM_Set_PWMCompare(big+ia_DeadTimeComp, small+ib_DeadTimeComp, medium+ic_DeadTimeComp);
             break;
         case 4:
-            HRTIM_Set_PWMCompare(big, medium, small);
+            HRTIM_Set_PWMCompare(big+ia_DeadTimeComp, medium+ib_DeadTimeComp, small+ic_DeadTimeComp);
             break;
         case 5:
-            HRTIM_Set_PWMCompare(medium, big, small);
+            HRTIM_Set_PWMCompare(medium+ia_DeadTimeComp, big+ib_DeadTimeComp, small+ic_DeadTimeComp);
             break;
         case 6:
-            HRTIM_Set_PWMCompare(small, big, medium);
+            HRTIM_Set_PWMCompare(small+ia_DeadTimeComp, big+ib_DeadTimeComp, medium+ic_DeadTimeComp);
             break;
         default:
             //未知情况，将输出减到最小。
