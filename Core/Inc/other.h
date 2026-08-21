@@ -19,6 +19,12 @@ static inline uint32_t clamp_u32(uint32_t input,uint32_t min,uint32_t max) {
     if (input > max)return max;
     return input;
 }
+//对i32数值进行限幅
+static inline int32_t clamp_i32(int32_t input,int32_t min,int32_t max) {
+    if (input < min)return min;
+    if (input > max)return max;
+    return input;
+}
 //对float数值进行限幅
 static inline float clamp_float(float input,float min,float max) {
     if (input < min)return min;

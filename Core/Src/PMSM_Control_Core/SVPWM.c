@@ -20,10 +20,10 @@ static const uint32_t Ts = HRTIM_Period * 2;
 static const uint16_t CompareMin = 100; //计数器最小计数值
 
 //设定PWM比较值，这里ABC三相分别对应TIMER ACD三个计时器。(-O2自动内联)
-static inline void HRTIM_Set_PWMCompare(uint16_t A,uint16_t B,uint16_t C) {
-    __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_1, clamp_u32(A, CompareMin, HRTIM_Period - CompareMin));
-    __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, HRTIM_COMPAREUNIT_1, clamp_u32(B, CompareMin, HRTIM_Period - CompareMin));
-    __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_D, HRTIM_COMPAREUNIT_1, clamp_u32(C, CompareMin, HRTIM_Period - CompareMin));
+static inline void HRTIM_Set_PWMCompare(int32_t A,int32_t B,int32_t C) {
+    __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_1, clamp_i32(A, CompareMin, HRTIM_Period - CompareMin));
+    __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, HRTIM_COMPAREUNIT_1, clamp_i32(B, CompareMin, HRTIM_Period - CompareMin));
+    __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_D, HRTIM_COMPAREUNIT_1, clamp_i32(C, CompareMin, HRTIM_Period - CompareMin));
 }
 
 
@@ -74,8 +74,10 @@ void SVPWM_Calculate_Set(float Valpha, float Vbeta,float ia,float ib,float ic) {
             Ty = 0;
             break;
     }
-    uint32_t small = (Ts - Tx - Ty) * (1.0f / 4), medium = (Ts + Tx - Ty) * (1.0f / 4), big = (Ts + Tx + Ty) * (1.0f / 4);
-    int32_t ia_DeadTimeComp=ia>0.01f?DeadTimeComp:0,ib_DeadTimeComp=ib>0.01f?DeadTimeComp:0,ic_DeadTimeComp=ic>0.01f?DeadTimeComp:0;
+    int32_t small = (Ts - Tx - Ty) * (1.0f / 4), medium = (Ts + Tx - Ty) * (1.0f / 4), big = (Ts + Tx + Ty) * (1.0f / 4);
+    int32_t ia_DeadTimeComp=sat(ia,-0.01,0.01,DeadTimeComp,-DeadTimeComp);
+    int32_t ib_DeadTimeComp=sat(ib,-0.01,0.01,DeadTimeComp,-DeadTimeComp);
+    int32_t ic_DeadTimeComp=sat(ic,-0.01,0.01,DeadTimeComp,-DeadTimeComp);
     switch (Sector) {
         case 1:
             HRTIM_Set_PWMCompare(small+ia_DeadTimeComp, medium+ib_DeadTimeComp, big+ic_DeadTimeComp);
