@@ -43,7 +43,7 @@ struct PI_Controller_t {
     } \
     extern struct PI_Controller_t NAME##_PIstate;
 #define Current_P_VAL 12.566f
-#define Current_I_Ts_VAL 1.727825f
+#define Current_I_Ts_VAL 1.727825f/1.7f
 GenerateFunction_PIController(Id,Current_P_VAL,Current_I_Ts_VAL,6.5f,-6.5f,1)
 GenerateFunction_PIController(Iq,Current_P_VAL,Current_I_Ts_VAL,6.5f,-6.5f,1)
 #define Speed_P_VAL 0.008712368f
