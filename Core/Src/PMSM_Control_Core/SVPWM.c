@@ -33,8 +33,8 @@ void SVPWM_Calculate_Set(float Valpha, float Vbeta,float ia,float ib,float ic) {
 
     //扇区(Sector)判断，A=Vbeta,B=(sqrt(3)*Valpha-Vbeta)/2,C=(-sqrt(3)*Valpha-Vbeta)/2
     //N=A+2B+4C
-    //Sector(N)=1(3),2(1),3(5),4(4),5(6),6(2)
-    const uint8_t Sector_Table[7] = {0, 2, 6, 1, 4, 3, 5}; //查表确定扇区，第一个值没用
+    //Sector(N)=0(0),1(3),2(1),3(5),4(4),5(6),6(2),0(7)
+    const uint8_t Sector_Table[8] = {0, 2, 6, 1, 4, 3, 5 ,0}; //查表确定扇区，第一个值和最后一个值没用
     const float A = Vbeta, B = (Sqrt_3 * Valpha - Vbeta) / 2, C = (-Sqrt_3 * Valpha - Vbeta) / 2; //(-O2优化下自动提取公共部分)
     uint8_t N = 0;
     N += A > 0 ? 1 : 0;
