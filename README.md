@@ -20,7 +20,7 @@
 |  SMO/STSMO   |                                                                                                                       滑模观测器不能直接闭环启动(否则有较大概率收敛到反方向最大转速-1800rad/s,其中给定为500rad/s)，需要IF启动                                                                                                                       |
 |    IF启动    |                                                                                          我们研究了IF启动切闭环的各种方法，找到了一种"双DQ变换法"切换闭环，切换时没有顿挫感，我们将它用在所有的观测器启动中而不仅限于SMO，以保证全部观测器都能够完美地启动                                                                                          |                                                                  |
 | 与上位机通信 |                                                                                                                                                        USB通信，VOFA+(JustFloat协议)显示波形                                                                                                                                                        |
-|   软件版本   |                                                                                                    CLion 2026.1,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.16.0,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                                                                                    |
+|   软件版本   |                                                                                                    CLion 2026.1,openocd 0.12.0,arm-gnu-toolchain 15.2,CUBEMX 6.18.1,CUBECLT 1.18.0,MATLAB R2024a,VOFA+ 1.4.5,操作系统版本:deepin V23(Linux 6.18)                                                                                                    |
 
 
 ## 🔌 **接线说明**
@@ -88,13 +88,6 @@ SMO与STSMO（待调整）估计反电动势与实际反电动势对比:
 
 ·在使用仿真模型时，注意不要将运行模式切换到"加速"或"快速加速"，而是使用"普通"，因为S-Function Builder在"加速"或"快速加速"似乎有些问题。
 仿真一次后，S-Function Builder里面的变量会维持仿真结束的值，如果再次仿真，建议重新编译一次代码或关闭MATLAB重新打开仿真文件，否则会出现一开始仿真，EKF的预测转速就是几百rad/s的奇怪结果(包括PI控制器保留原来的输出的问题),最新消息:目前该问题已解决，是在xxx_start_Wrapper函数中清空各变量即可。
-
-·工程已升级为CUBEMX6.16.0工程，最新版CUBEMX每次默认生成的代码不含有工具链的说明，直接运行会失败，每次生成代码后，需要在CMakeLists.txt较前部分添加一行：
-
-```cmake
-# Include toolchain file
-include("cmake/gcc-arm-none-eabi.cmake")
-```
 
 ·在Documents文件夹里有关于观测器代码推导与实现的简略说明和解释(整个文档的公式由个人整理和推导,可能有错误,不一定和主流方案一致,文档只说明了如何使用理论公式推导出代码,而理论公式如何得到,文档并没有说明,请参考相关的书籍)
 

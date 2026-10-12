@@ -279,3 +279,4 @@ void HAL_HRTIM_MspDeInit(HRTIM_HandleTypeDef* hrtimHandle)
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */
+

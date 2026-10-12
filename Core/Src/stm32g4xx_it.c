@@ -82,7 +82,6 @@ float OB_ESpeed=0.0f;//观测器速度
 extern PCD_HandleTypeDef hpcd_USB_FS;
 extern DMA_HandleTypeDef hdma_adc1;
 extern ADC_HandleTypeDef hadc1;
-extern ADC_HandleTypeDef hadc2;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -245,35 +244,14 @@ void DMA1_Channel1_IRQHandler(void)
 void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
-  static volatile uint8_t adc1_done = 0;
-  static volatile uint8_t adc2_done = 0;
-  if (__HAL_ADC_GET_FLAG(&hadc1, ADC_FLAG_JEOS))
-  {
-    __HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_JEOS);
-    adc1_done = 1;
-  }
-  if (__HAL_ADC_GET_FLAG(&hadc2, ADC_FLAG_JEOS))
-  {
-    __HAL_ADC_CLEAR_FLAG(&hadc2, ADC_FLAG_JEOS);
-    adc2_done = 1;
-  }
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
-  HAL_ADC_IRQHandler(&hadc2);
   /* USER CODE BEGIN ADC1_2_IRQn 1 */
-  //HRTIM每次更新时同时触发ADC1,ADC2采样Ia,Ib,因此此中断一个周期触发两次，必须要等两路电流都采集完,才进行控制
-  if (adc1_done && adc2_done)
-  {
-    adc1_done = 0;
-    adc2_done = 0;
-  }
-  else return;
-
   /*
    *获取ABC相电流
    */
   const uint32_t va_source=HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-  const uint32_t vb_source=HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+  const uint32_t vb_source=HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_2);
   //必须显式强转有符号整数，否则结果会被隐式转化为无符号整数
   const float Ia_raw=(IA_REF-(int32_t)va_source)*VCC_3V3/IA_K/4095.f;
   const float Ib_raw=(IB_REF-(int32_t)vb_source)*VCC_3V3/IB_K/4095.f;
@@ -476,14 +454,14 @@ void ADC1_2_IRQHandler(void)
   IPark_transform(&ClarkePark.ipark);
 
   /*
-   * 对计算所得的矢量进行限幅(6.5V)
+   * 对计算所得的矢量进行限幅(6.2V)
    */
   float modulus;
   arm_sqrt_f32(ClarkePark.ipark.Valpha_O*ClarkePark.ipark.Valpha_O
      +ClarkePark.ipark.Vbeta_O*ClarkePark.ipark.Vbeta_O,&modulus);
-  if (modulus>6.2f) {
-    ClarkePark.ipark.Valpha_O *= 6.2f / modulus;
-    ClarkePark.ipark.Vbeta_O*=6.2f/modulus;
+  if (modulus>6.5f) {
+    ClarkePark.ipark.Valpha_O *= 6.5f / modulus;
+    ClarkePark.ipark.Vbeta_O*=6.5f/modulus;
   }
 
 

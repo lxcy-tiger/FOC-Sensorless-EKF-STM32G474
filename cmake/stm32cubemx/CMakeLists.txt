@@ -83,8 +83,10 @@ set(MX_LINK_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/ST/ARM/DSP/Lib
 )
 # Project static libraries
-set(MX_LINK_LIBS  
+set(MX_LINK_LIBS 
+ "-Wl,--start-group" 
 	:libarm_cortexM4lf_math.a
+ "-Wl,--end-group"
     STM32_Drivers
     ${TOOLCHAIN_LINK_LIBRARIES}
     USB_Device_Library	

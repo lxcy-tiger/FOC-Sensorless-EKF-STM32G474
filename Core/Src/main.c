@@ -103,7 +103,6 @@ int main(void)
   MX_HRTIM1_Init();
   MX_ADC1_Init();
   MX_USB_Device_Init();
-  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
 
   //初始化EKF
@@ -113,7 +112,6 @@ int main(void)
   //ADC单端输入校准
   __HAL_RCC_ADC12_CLK_ENABLE();
   if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK)Error_Handler();
-  if (HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED) != HAL_OK)Error_Handler();
   //离线Ia,Ib,Vcc偏置ADC值校正
   Offline_IabVcc_Adjust();
 
@@ -121,12 +119,8 @@ int main(void)
   Id_PIstate.Set=0;
   //开启注入转换结束标志
   LL_ADC_EnableIT_JEOS(ADC1);
-  LL_ADC_EnableIT_JEOS(ADC2);
   // 启动ADC注入通道
   HAL_ADCEx_InjectedStart(&hadc1);
-  __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC); //注入转换结束中断
-  HAL_ADCEx_InjectedStart(&hadc2);
-  __HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_JEOC); //注入转换结束中断
 
   //开启定时器
   HAL_HRTIM_WaveformCountStart(&hhrtim1,HRTIM_TIMERID_MASTER
@@ -140,7 +134,7 @@ int main(void)
   HAL_GPIO_WritePin(EN2_GPIO_Port,EN2_Pin,GPIO_PIN_SET);
   HAL_GPIO_WritePin(EN3_GPIO_Port,EN3_Pin,GPIO_PIN_SET);
   //测试：
-  GiveESpeed(500);
+  GiveESpeed(1000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
