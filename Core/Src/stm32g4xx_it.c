@@ -59,7 +59,7 @@
 */
 uint8_t IF_Start_Step=0;
 static const float IF_IqCurrentTarget=0.6f;//IF强拖电流最终给定(给定Iq电流环最终值,单位A)
-static const float IF_IqCurrentAcceleration=0.5f;//IF强拖电流增加速度(A/s)
+static const float IF_IqCurrentAcceleration=0.2f;//IF强拖电流增加速度(A/s)
 float IF_IqCurrent=0.0f;//IF强拖电流实际值(Iq给定值以每秒IF_IqCurrentAcceleration的速度增加,慢慢上升直到IF_IqCurrentTarget)
 static const float IF_Acceleration=100.f;//IF加速度(表示强拖速度增加的速度，单位rad/s^2)
 static const float IF_Target_Speed=500.f;//IF目标速度(表示结束强拖应该达到的速度,即IF_Start_Step何时变为1的阈值,单位rad/s)
@@ -459,9 +459,9 @@ void ADC1_2_IRQHandler(void)
   float modulus;
   arm_sqrt_f32(ClarkePark.ipark.Valpha_O*ClarkePark.ipark.Valpha_O
      +ClarkePark.ipark.Vbeta_O*ClarkePark.ipark.Vbeta_O,&modulus);
-  if (modulus>6.5f) {
-    ClarkePark.ipark.Valpha_O *= 6.5f / modulus;
-    ClarkePark.ipark.Vbeta_O*=6.5f/modulus;
+  if (modulus>6.2f) {
+    ClarkePark.ipark.Valpha_O *= 6.2f / modulus;
+    ClarkePark.ipark.Vbeta_O*=6.2f/modulus;
   }
 
 
